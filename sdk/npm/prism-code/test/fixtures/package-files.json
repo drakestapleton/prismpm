@@ -88,6 +88,7 @@
   "src/journey/kernel/manifest.json",
   "src/journey/lexlean-wasm.mjs",
   "src/journey/mcp.mjs",
+  "src/journey/model-eval.mjs",
   "src/journey/model-files.mjs",
   "src/journey/model-prove.mjs",
   "src/journey/project.mjs",
