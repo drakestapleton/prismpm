@@ -362,6 +362,11 @@ test('SPIR-V 1.0 OpenCL Kernel framing and exact version 1.0 are enforced', asyn
     assert.equal(ver.response.result.passed, true);
   });
 
+  const spvWords = (words) => {
+    const b = Buffer.alloc(words.length * 4);
+    words.forEach((v, i) => b.writeUInt32LE(v >>> 0, i * 4));
+    return b;
+  };
   const badSpirvCases = [
     ['bad SPIR-V magic', buildSpirvPayload({ magic: 0xdeadbeef })],
     ['bad SPIR-V version 0xffffffff', buildSpirvPayload({ version: 0xffffffff })],
@@ -371,6 +376,11 @@ test('SPIR-V 1.0 OpenCL Kernel framing and exact version 1.0 are enforced', asyn
     ['multiple OpEntryPoint with first undefined', buildSpirvPayload({ extraEntryId: 4, defineExtraEntryFn: false })],
     ['duplicate OpEntryPoint id', buildSpirvPayload({ extraEntryId: 3, defineExtraEntryFn: true })],
     ['duplicate conflicting OpMemoryModel', buildSpirvPayload({ secondMemModel: true })],
+    ['OpEntryPoint after OpFunction', spvWords([0x07230203, 0x00010000, 0, 8, 0, (2 << 16) | 17, 4, (2 << 16) | 17, 6, (3 << 16) | 14, 2, 2, (5 << 16) | 54, 1, 3, 0, 2, (1 << 16) | 56, (5 << 16) | 15, 6, 3, 0x64646176, 0])],
+    ['OpCapability after OpMemoryModel', spvWords([0x07230203, 0x00010000, 0, 8, 0, (2 << 16) | 17, 4, (3 << 16) | 14, 2, 2, (2 << 16) | 17, 6, (5 << 16) | 15, 6, 3, 0x64646176, 0, (5 << 16) | 54, 1, 3, 0, 2, (1 << 16) | 56])],
+    ['empty OpEntryPoint name', spvWords([0x07230203, 0x00010000, 0, 8, 0, (2 << 16) | 17, 4, (2 << 16) | 17, 6, (3 << 16) | 14, 2, 2, (4 << 16) | 15, 6, 3, 0, (5 << 16) | 54, 1, 3, 0, 2, (1 << 16) | 56])],
+    ['unterminated OpEntryPoint name', spvWords([0x07230203, 0x00010000, 0, 8, 0, (2 << 16) | 17, 4, (2 << 16) | 17, 6, (3 << 16) | 14, 2, 2, (4 << 16) | 15, 6, 3, 0x41414141, (5 << 16) | 54, 1, 3, 0, 2, (1 << 16) | 56])],
+    ['OpEntryPoint interface id >= bound', spvWords([0x07230203, 0x00010000, 0, 8, 0, (2 << 16) | 17, 4, (2 << 16) | 17, 6, (3 << 16) | 14, 2, 2, (6 << 16) | 15, 6, 3, 0x64646176, 0, 99, (5 << 16) | 54, 1, 3, 0, 2, (1 << 16) | 56])],
     ['missing Kernel capability', buildSpirvPayload({ includeKernelCap: false })],
     ['truncated instruction', buildSpirvPayload({ truncateInst: true })],
   ];
@@ -464,6 +474,13 @@ test('malformed UOR-GPU-1 headers and out-of-range discriminants are refused wit
   assert.equal(omitted.response.ok, false);
   assertRegisteredCode(omitted.response.error.code, 'omitted archive');
   assert.equal(omitted.response.error.code, 'archive.input');
+
+  // Prototype-property operation names are reported as unsupported, never invoked.
+  for (const op of ['toString', 'constructor', '__proto__']) {
+    const res = await callShim(SHIM, { op, input: {} });
+    assert.equal(res.response.ok, false, op);
+    assert.ok(typeof res.response.unsupported === 'string', `${op} must be unsupported`);
+  }
 });
 
 test('tampered UOR-GPU-1 payload fails integrity, reports computed seal identity, and respects allowUnverified on load', async () => {

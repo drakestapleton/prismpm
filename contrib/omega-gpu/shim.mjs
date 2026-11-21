@@ -125,9 +125,11 @@ function validateSpirvPayload(payload) {
   const nw = payload.length / 4;
   let capMask = 0; // bit 0: Addresses (4), bit 1: Kernel (6)
   let memModelCount = 0;
+  let stage = 0; // 0=capabilities, 1=memory-model, 2=entry-points, 3=functions
   const entryIds = new Set();
   const definedFns = new Set();
   let inFn = false;
+  const utf8 = new TextDecoder('utf-8', { fatal: true });
 
   for (let p = 5; p < nw; ) {
     const hd = w(p);
@@ -137,36 +139,67 @@ function validateSpirvPayload(payload) {
       return `SPIR-V instruction at word ${p} has invalid word count ${wc}.`;
     }
     if (op === 17) {
-      // OpCapability
-      if (inFn || wc !== 2) return 'SPIR-V OpCapability must appear outside functions with word count 2.';
+      // OpCapability (SPIR-V logical layout section 1)
+      if (inFn || stage > 0 || wc !== 2) return 'SPIR-V OpCapability must appear in module header before OpMemoryModel with word count 2.';
       const cap = w(p + 1);
       if (cap === 4) capMask |= 1;
       if (cap === 6) capMask |= 2;
     } else if (op === 14) {
-      // OpMemoryModel Physical64(2) OpenCL(2)
-      if (inFn || wc !== 3) return 'SPIR-V OpMemoryModel must appear outside functions with word count 3.';
+      // OpMemoryModel Physical64(2) OpenCL(2) (SPIR-V logical layout section 4)
+      if (inFn || stage > 0 || wc !== 3) return 'SPIR-V OpMemoryModel must appear once before OpEntryPoint with word count 3.';
       if (memModelCount > 0) return 'SPIR-V module must declare exactly one OpMemoryModel.';
       if (w(p + 1) !== 2 || w(p + 2) !== 2) return 'SPIR-V OpMemoryModel must be Physical64 (2) OpenCL (2).';
       memModelCount += 1;
+      stage = 1;
     } else if (op === 15) {
-      // OpEntryPoint Kernel(6) <id> <name...>
-      if (inFn || wc < 4 || w(p + 1) !== 6) return 'SPIR-V OpEntryPoint must appear outside functions and target OpenCL Kernel execution model (6).';
+      // OpEntryPoint Kernel(6) <id> <name...> <interface...> (SPIR-V logical layout section 5)
+      if (inFn || stage < 1 || stage > 2 || wc < 4 || w(p + 1) !== 6) {
+        return 'SPIR-V OpEntryPoint must follow OpMemoryModel before functions and target OpenCL Kernel execution model (6).';
+      }
       const eid = w(p + 2);
       if (eid === 0 || eid >= bound) return `SPIR-V OpEntryPoint id ${eid} is outside 1..${bound - 1}.`;
       if (entryIds.has(eid)) return `SPIR-V duplicate OpEntryPoint for function id ${eid}.`;
+      // Parse canonical NUL-terminated, zero-padded UTF-8 literal kernel name.
+      const nameStart = (p + 3) * 4;
+      const instEnd = (p + wc) * 4;
+      let nulPos = -1;
+      for (let bi = nameStart; bi < instEnd; bi++) {
+        if (payload[bi] === 0) {
+          nulPos = bi;
+          break;
+        }
+      }
+      if (nulPos <= nameStart) return 'SPIR-V OpEntryPoint kernel name must be non-empty and NUL-terminated.';
+      const nameWordEnd = Math.floor((nulPos - nameStart) / 4) * 4 + nameStart + 4;
+      for (let bi = nulPos + 1; bi < nameWordEnd; bi++) {
+        if (payload[bi] !== 0) return 'SPIR-V OpEntryPoint literal string has non-zero padding after NUL.';
+      }
+      try {
+        utf8.decode(payload.subarray(nameStart, nulPos));
+      } catch {
+        return 'SPIR-V OpEntryPoint kernel name is not valid UTF-8.';
+      }
+      for (let wi = nameWordEnd / 4; wi < p + wc; wi++) {
+        const ifaceId = w(wi);
+        if (ifaceId === 0 || ifaceId >= bound) return `SPIR-V OpEntryPoint interface id ${ifaceId} is outside 1..${bound - 1}.`;
+      }
       entryIds.add(eid);
+      stage = 2;
     } else if (op === 54) {
       // OpFunction <ResultType> <ResultId> <FunctionControl> <FunctionType>
-      if (inFn || wc !== 5) return 'SPIR-V malformed or nested OpFunction.';
+      if (inFn || stage < 2 || wc !== 5) return 'SPIR-V malformed, misplaced, or nested OpFunction.';
       const resType = w(p + 1);
       const fnId = w(p + 2);
+      const fnCtrl = w(p + 3);
       const fnType = w(p + 4);
       if (resType === 0 || resType >= bound) return `SPIR-V OpFunction result type ${resType} is outside 1..${bound - 1}.`;
       if (fnId === 0 || fnId >= bound) return `SPIR-V OpFunction id ${fnId} is outside 1..${bound - 1}.`;
+      if ((fnCtrl & ~0xf) !== 0 || (fnCtrl & 3) === 3) return `SPIR-V OpFunction has invalid FunctionControl mask 0x${fnCtrl.toString(16)}.`;
       if (fnType === 0 || fnType >= bound) return `SPIR-V OpFunction type ${fnType} is outside 1..${bound - 1}.`;
       if (definedFns.has(fnId)) return `SPIR-V duplicate OpFunction id ${fnId}.`;
       definedFns.add(fnId);
       inFn = true;
+      stage = 3;
     } else if (op === 56) {
       // OpFunctionEnd
       if (!inFn || wc !== 1) return 'SPIR-V malformed OpFunctionEnd.';
@@ -597,16 +630,25 @@ const OPERATIONS = {
 };
 
 async function answer(request) {
-  const operation = OPERATIONS[request.op];
-  if (!operation) return { ok: false, unsupported: `no operation ${request.op}` };
+  if (!request || typeof request !== 'object' || Array.isArray(request)) {
+    return { ok: false, error: { code: 'prism_error', message: sentence('Shim request must be a JSON object.') } };
+  }
+  const operation = typeof request.op === 'string' && Object.hasOwn(OPERATIONS, request.op) ? OPERATIONS[request.op] : undefined;
+  if (!operation) return { ok: false, unsupported: `no operation ${clipToken(request.op)}` };
   try {
     let bytes;
     if (request.archive !== undefined) {
+      if (typeof request.archive !== 'string') {
+        throw shimErr({ code: 'archive.input', message: sentence('Archive path must be a string.') });
+      }
       try {
         bytes = new Uint8Array(await readFile(request.archive));
       } catch (err) {
         throw shimErr({ code: 'load.path', message: sentence(`Archive cannot be read: ${err.message}`) });
       }
+    }
+    if (request.input !== undefined && request.input !== null && (typeof request.input !== 'object' || Array.isArray(request.input))) {
+      throw shimErr({ code: 'prism_error', message: sentence('Shim request input must be an object.') });
     }
     const result = await operation({ bytes, archive: request.archive, input: request.input ?? {} });
     if (result && typeof result === 'object' && 'unsupported' in result && Object.keys(result).length === 1) {
