@@ -74,8 +74,19 @@ const { ruleTable, tableWords, tableShape, counterexample, OPS } = await import(
 // The app this model was published with, if any: its record says what the app runs.
 const { appRecord, tableFacts, differences, verdict } = await import('./app-match.mjs');
 const beside = await appRecord(PROJECT);
+// A holo app has another record: the label of its holo and the identity of the model it was built from.
+const { holoAppRecord, holoVerdict } = await import('./holo-match.mjs');
+const holoBeside = beside ? null : await holoAppRecord(PROJECT);
 function compare(table, text) {
   if (!PROJECT) { $('appMatch').hidden = true; state.app = null; return; }
+  if (holoBeside) {
+    const said = holoVerdict(holoBeside, state.last?.semanticId, text !== original);
+    state.app = { found: true, kind: 'holo', state: said.state, holo: holoBeside.holo };
+    $('appMatch').textContent = said.text;
+    $('appMatch').dataset.state = said.state;
+    $('appMatch').hidden = false;
+    return;
+  }
   const differs = beside && table ? differences(tableFacts(table, { tableWords, tableShape }), beside.record) : [];
   const said = !beside ? verdict(null, [], false) : !table ? { state: 'unread', text: `This model is not read as a rule table here, so it is not compared with the app at ${beside.app}.` } : verdict(beside, differs, text !== original);
   state.app = { found: !!beside, state: said.state, differs };
