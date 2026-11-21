@@ -228,17 +228,27 @@ test('caller-supplied world and digest pins are enforced at P0 and unsupported p
     }
 
     // Null policy / null optional fields and pure/impure effect lists match @prism-code/verify semantics.
-    for (const [label, policy, expectedPassed] of [
-      ['null policy (default P2)', null, false],
-      ['null optional policy fields at P0', { name: null, minimum: 'P0', digests: null, effects: null }, true],
-      ['pure-only effects []', { minimum: 'P0', effects: [] }, true],
-      ['impure effects [clock, random]', { minimum: 'P0', effects: ['clock', 'random'] }, true],
+    for (const [label, policy, expectedPassed, env, expectedMin] of [
+      ['null policy (default P2)', null, false, {}, 'P2'],
+      ['null policy inherits PRISM_MINIMUM_LEVEL=P0', null, true, { PRISM_MINIMUM_LEVEL: 'P0' }, 'P0'],
+      ['explicit minimum: null ignores PRISM_MINIMUM_LEVEL=P0 (stays P2)', { minimum: null }, false, { PRISM_MINIMUM_LEVEL: 'P0' }, 'P2'],
+      ['explicit minimum: null ignores invalid PRISM_MINIMUM_LEVEL', { minimum: null }, false, { PRISM_MINIMUM_LEVEL: 'high' }, 'P2'],
+      ['empty PRISM_MINIMUM_LEVEL treated as unset (P2)', {}, false, { PRISM_MINIMUM_LEVEL: '' }, 'P2'],
+      ['null optional policy fields at P0', { name: null, minimum: 'P0', digests: null, effects: null }, true, {}, 'P0'],
+      ['pure-only effects []', { minimum: 'P0', effects: [] }, true, {}, 'P0'],
+      ['impure effects [clock, random]', { minimum: 'P0', effects: ['clock', 'random'] }, true, {}, 'P0'],
     ]) {
-      const res = await callShim(SHIM, { op: 'verify', archive, input: { policy } });
+      const res = await callShim(SHIM, { op: 'verify', archive, input: { policy } }, { env });
       assert.equal(res.response.ok, true, label);
       assertValidVerdict(res.response.result);
       assert.equal(res.response.result.passed, expectedPassed, label);
+      assert.equal(res.response.result.policy.minimum, expectedMin, label);
     }
+
+    const badEnv = await callShim(SHIM, { op: 'verify', archive, input: {} }, { env: { PRISM_MINIMUM_LEVEL: 'high' } });
+    assert.equal(badEnv.response.ok, false);
+    assertRegisteredCode(badEnv.response.error.code, 'invalid PRISM_MINIMUM_LEVEL');
+    assert.equal(badEnv.response.error.check, 'policy.invalid');
   });
 });
 

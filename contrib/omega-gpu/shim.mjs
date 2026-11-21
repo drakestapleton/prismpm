@@ -436,21 +436,33 @@ const OPERATIONS = {
     const buf = Buffer.from(bytes);
     const polErr = validatePolicy(input.policy);
     if (polErr) throw shimErr(polErr);
-    const explicitMin = input.policy?.minimum ?? null;
-    if (process.env.PRISM_MINIMUM_LEVEL !== undefined && explicitMin === null) {
-      if (!VALID_LEVELS.has(process.env.PRISM_MINIMUM_LEVEL)) {
-        throw shimErr({
-          code: 'verification_failed',
-          check: 'policy.invalid',
-          message: sentence(`Invalid PRISM_MINIMUM_LEVEL ${clipToken(process.env.PRISM_MINIMUM_LEVEL)}.`),
-        });
+    // Match sdk/npm/prism-code/src/verify.mjs resolveOptions(): consult PRISM_MINIMUM_LEVEL
+    // only when policy.minimum is omitted (undefined) and the env var is non-empty; an
+    // explicit null falls back to the default P2 rather than weakening to the environment.
+    const envMin = process.env.PRISM_MINIMUM_LEVEL;
+    let minimum;
+    if (input.policy?.minimum === undefined) {
+      if (envMin !== undefined && envMin !== '') {
+        if (!VALID_LEVELS.has(envMin)) {
+          throw shimErr({
+            code: 'verification_failed',
+            check: 'policy.invalid',
+            message: sentence(`Invalid PRISM_MINIMUM_LEVEL ${clipToken(envMin)}.`),
+          });
+        }
+        minimum = envMin;
+      } else {
+        minimum = 'P2';
       }
+    } else if (input.policy.minimum === null) {
+      minimum = 'P2';
+    } else {
+      minimum = input.policy.minimum;
     }
     if (isUorGpuBundle(buf)) {
       const parsed = parseUorGpuBundle(buf, true);
       if (parsed.error) throw shimErr(parsed.error);
       const intact = parsed.integrity.payloadOk && parsed.integrity.uorIdOk && parsed.integrity.holoOk;
-      const minimum = explicitMin ?? process.env.PRISM_MINIMUM_LEVEL ?? 'P2';
       const policyName = input.policy?.name ?? 'default';
       const reasons = [];
       let policyDenied = false;
