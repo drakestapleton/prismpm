@@ -79,6 +79,17 @@ test('a false statement is not proved', { skip: !here && 'no lean-prover package
   assert.equal(r.theorems.filter((t) => t.status.startsWith('proved')).length, 7);
 });
 
+test("the canonical template's theorem, proved by simplify, is proved on the axioms it declares", { skip: !here && 'no lean-prover package beside this one' }, async () => {
+  // conformant_decides states a Boolean test equals its proposition. Every digest equation it needs is given by a
+  // hypothesis; before, each was proved again through LexReflect.nat_eq_of, whose proof rests on Quot.sound, so the
+  // theorem was refused for an axiom it does not declare. Snapshot: UOR-Foundation/template at 3fa228d7, app/.
+  const r = await modelProve(snapshot('template-contract'), { kernel: await openModelKernel({ env: { PRISM_MODEL_KERNEL_DIR: kernelDir(), PRISM_KAPPA_DIR: storeDir() } }), fetch: noFetch });
+  const th = r.theorems.find((t) => t.name.endsWith('.conformant_decides'));
+  assert.match(th.status, /^proved/, th.status);
+  assert.deepEqual(th.axioms, ['propext']);
+  assert.equal(r.ok, true);
+});
+
 test('a theorem judged once is not judged again, in this app or in another app with the same theorem', { skip: !here && 'no lean-prover package beside this one' }, async () => {
   const env = { PRISM_MODEL_KERNEL_DIR: kernelDir(), PRISM_KAPPA_DIR: storeDir() };
   const first = await modelProve(snapshot('seat'), { env, fetch: noFetch });
