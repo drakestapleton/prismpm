@@ -131,8 +131,36 @@ Tried by hand on the assembled site, served as Pages serves it:
 
 Checked in the same browser on `model/ide-capability-gate`: the archive the page makes of the model as fetched is 45056 bytes with the label `blake3:a4ac2e2ff115…`, the same bytes count and label Node gives for the repository's files; a changed file gives another label; undoing the change gives the first one back. The button itself was not pressed by hand: what was checked is the archive the button hands over.
 
+### Opening a model by its label, from a kappa-registry
+
+The archive "Download model" gives is named by its BLAKE3 label. Stored as a blob in a [kappa-registry](https://github.com/UOR-Foundation/kappa-registry), it opens from an address that names only the label:
+
+```
+edit/ide/?registry=https://<registry>&namespace=<namespace>&model=blake3:<64 hex>
+```
+
+- `kappa-registry.mjs` is a read-only client for the registry's blob endpoint, `GET <registry>/v2/<namespace>/blobs/<label>`. It gives the bytes back only when they derive to the label asked for, so the registry is a place to fetch from, not something to trust. What the registry says of the bytes in its own headers is not read.
+- The request carries nothing but the address: no cookie, no credential, and a redirect is not followed. The registry must be reached by https, or by http on this machine.
+- `readModelTar` in `model-tar.mjs` reads the archive strictly: plain files of text under one folder, every header's checksum, no path that leaves the folder. Anything else is refused whole.
+- A line under the strip says which label was opened, how many bytes, and from where. A model opened this way is compared with no app.
+
+Tried by hand in the same browser, against a stand-in on this machine that answers at the registry's address shape. **kappa-registry itself was not run**: it is a Rust server and was not built here.
+
+| Step | Shown |
+|---|---|
+| A stored model's label | the workbench opens it; 5 of 5 proved; "This is the model blake3:42a411b0…: 40448 bytes fetched from …, which derive to that label." |
+| Its archive, made again by the page | the same label |
+| Change a rule | "Opened as blake3:42a411b0… You have changed it since"; the page's archive now has another label |
+| A label under which the stand-in serves other bytes, claiming them in its header | nothing opens: "the registry answered with bytes that are blake3:a4ac2e2f…, not the blake3:ce07bb9e… asked for" |
+| A label the registry does not have | "the registry has no blob … under acme/models" |
+| A registry reached by http across a network | refused before any request |
+
+`tools/kappa-registry-test.mjs` holds the client and the archive reader to this, with a registry that lies, archives with a path that leaves the folder, a link, a broken checksum, and addresses that carry a password or the wrong kind of label.
+
 Limits of the workbench page:
 
+- Opening by label is read only: the page pushes nothing to a registry. A model gets there by `curl`, as the registry's README shows, or by a tool that can push.
+- Only a registry that needs no sign-in for reading can be used: the client sends no credential.
 - A draft is trusted no further than the origin that serves the page: another page of the same origin can write to the same store. It is the reader's convenience, not evidence of anything.
 - Texts a discarded draft named stay in the browser until the site's data is cleared. Nothing names them.
 - Where the browser has no private file system for the page (a private window), nothing is kept, and the line says a reload loses the changes. That case was not tried by hand.

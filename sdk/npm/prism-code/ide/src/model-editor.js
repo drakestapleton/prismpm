@@ -66,7 +66,26 @@ const asked = new URLSearchParams(location.search).get('project');
 const PROJECT = asked ? new URL(asked.replace(/\/?$/, '/'), location.href).href : null;
 const files = {};
 let listing, pin;
-try {
+// ?model=blake3:<label>&registry=<address>&namespace=<name> opens a model by its content: the archive "Download
+// model" makes, fetched from a kappa-registry under its BLAKE3 label and taken only if its bytes are that label.
+const wanted = new URLSearchParams(location.search);
+const BY_LABEL = wanted.get('model') ? { label: wanted.get('model'), registry: wanted.get('registry') ?? '', namespace: wanted.get('namespace') ?? '' } : null;
+if (BY_LABEL) {
+  try {
+    const [{ fetchBlob }, { readModelTar }] = await Promise.all([import(/* @vite-ignore */ EDIT + 'kappa-registry.mjs'), import(/* @vite-ignore */ EDIT + 'model-tar.mjs')]);
+    pin = await json(EDIT + 'pin.json');
+    const blob = await fetchBlob(BY_LABEL.registry, BY_LABEL.namespace, BY_LABEL.label);
+    const read = readModelTar(blob.bytes);
+    for (const [path, text] of Object.entries(read.files)) files['/' + path] = text;
+    listing = { files: Object.keys(read.files).sort(), entry: read.entry };
+    state.source = { kind: 'registry', label: BY_LABEL.label, address: blob.address, bytes: blob.bytes.length, files: listing.files.length };
+  } catch (error) {
+    state.error = String(error?.message ?? error);
+    state.source = { kind: 'registry', label: BY_LABEL.label, refused: error?.code ?? 'unreadable' };
+    say(`The model ${BY_LABEL.label} could not be opened: ${state.error}`, 'bad');
+    throw error;
+  }
+} else try {
   [listing, pin] = await Promise.all([json(PROJECT ? PROJECT + 'project.json' : EDIT + 'project.json'), json(EDIT + 'pin.json')]);
   await Promise.all(listing.files.map(async (path) => {
     const response = await fetch((PROJECT ?? EDIT + 'project/') + path, { cache: 'no-store' });
@@ -90,6 +109,16 @@ const holoBeside = beside ? null : await holoAppRecord(PROJECT);
 const original = files[entry];
 const matchLine = document.getElementById('match');
 function compare(table, edited) {
+  if (BY_LABEL) {
+    // A model opened by its label is compared with no app; what is known is where it came from and that it is those bytes.
+    state.app = null;
+    matchLine.textContent = edited
+      ? `Opened as ${BY_LABEL.label} from ${state.source.address}. You have changed it since: "Download model" gives the label of what is in the editor now.`
+      : `This is the model ${BY_LABEL.label}: ${state.source.bytes} bytes fetched from ${state.source.address}, which derive to that label. It is compared with no app.`;
+    matchLine.dataset.state = edited ? 'changed' : 'same';
+    matchLine.hidden = false;
+    return;
+  }
   if (!PROJECT) { matchLine.hidden = true; state.app = null; return; }
   if (holoBeside) {
     const said = holoVerdict(holoBeside, state.last?.semanticId, edited);
