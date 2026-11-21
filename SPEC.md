@@ -3979,6 +3979,22 @@ are out of range, or whose acceptance names an input it does not carry or
 exceeds a declared bound. The build of a binary application and the runtime
 resolution of input names are not part of this section.
 
+### 12.19 Experimental Omega GPU world (`hologram:gpu/omega-om@1`)
+
+HO-51 owns the experimental Omega GPU bundle world contract
+`hologram:gpu/omega-om@1` (`sdk/npm/spec/worlds/gpu-omega.wit`, proposal
+`docs/proposals/gpu-omega-world.md`) and its `prism/conformance-shim/1`
+runtime shim (`contrib/omega-gpu/`). It validates canonical 384-byte
+`UOR-GPU-1` headers (version 1, ISA `1=SM121` or `2=SPIRV`, math contract
+`1=IEEE754_RN` or `2=FTZ`, claimed evidence level `0..3`, launch `block_x` in
+`1..1024`, exact payload length, and unsigned-envelope invariants requiring
+`claimedLevel == 0` and all-zero `attest_sig` when `signer_pubkey` is zero),
+dual SHA-256 and BLAKE3 seals, target payload framing (896-byte SM121 SASS +
+QMD v05.00 SKEDCHECK05 invariants; SPIR-V 1.0 OpenCL Kernel framing and
+instruction stream), caller-supplied world and digest pins, registered
+diagnostic codes, and schema-valid `prism/verdict/1` verdicts. Physical GPU
+silicon execution is out of scope for this host shim.
+
 ## 13. OCI product-release graph
 
 Distribution uses OCI Image and Distribution 1.1. The root product release is
@@ -4521,6 +4537,7 @@ Every row below is normative, has the honesty level registered in `model/ids.tom
 | `HO-48` | `holo` | prism-code checkpoints and restores sessions of the checkpoint world: checkpoint on a session returns the BLAKE3 kappa label of the state bytes and a copy of them; openAt opens a session on a fresh instance whose state is the given bytes, refusing with checkpoint.address bytes that do not hash to the label or a label that is not a BLAKE3 kappa label and with checkpoint.state bytes over the declared state maximum, before the guest runs; a session resumed from a checkpoint returns the same responses to the same requests as the session it was taken from; checkpoint and openAt on a guest of another world fail checkpoint.unsupported. | §3 |
 | `HO-49` | `holo` | Holo format revision 2026-11-18 is revision 2026-10-23 for holo v5 with two more guest contracts and one more model document: a holo v5 may name hologram:guest/core-wasm@2 or hologram:guest/core-wasm@3 in its manifest and its provenance, with the wasm layer entered at holo_step, and may pack prismpm/model-document/9; the readers of @prism-code/verify, prism-code and the Rust inspector name the first revision an archive matches, so every existing archive keeps 2026-10-23, and a holo v4, whose application manifest fixes @1 and holo_run, is of no other revision. | §3 |
 | `HO-50` | `holo` | A binary application, Foundation.Binary.Application.V1.Model.BinaryApplication with profile prismpm/binary-application/1, projects to prismpm/model-document/9: the stateless world with acceptance vectors, or the session or checkpoint world with session bounds and acceptance sessions, requests and responses up to 64 MiB, and inputs named by BLAKE3 digest whose bytes acceptanceInputs carries; a declaration whose session member disagrees with its contract, whose resolved frame cannot fit its declared memory, or whose acceptance names an input it does not carry is refused with PP2027, and the projection is valid against the closed model-document/9 schema. | §3 |
+| `HO-51` | `holo` | The experimental Omega GPU world hologram:gpu/omega-om@1 (sdk/npm/spec/worlds/gpu-omega.wit) and its prism/conformance-shim/1 runtime shim (contrib/omega-gpu/) enforce canonical UOR-GPU-1 headers, unsigned-envelope invariants, dual SHA-256 and BLAKE3 digests, SM121 896B QMD v05.00 SKEDCHECK05 and SPIR-V 1.0 OpenCL Kernel framing, caller-supplied world and digest pins, registered diagnostic codes, and schema-valid prism/verdict/1 verdicts. | §3 |
 | `CT-01` | `controller` | The Controller API exposes owned request and result types for load, check, and build. | §4 |
 | `CT-02` | `controller` | The Controller encapsulates LexLean Engine operations without exposing internal compiler types. | §4 |
 | `CT-03` | `controller` | prismpm check validates models in memory without modifying the filesystem. | §4 |

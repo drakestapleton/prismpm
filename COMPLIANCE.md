@@ -132,14 +132,14 @@ Which Prism runtime passes which part of the runtime contract, from the results 
 | --- | --- | --- | --- | --- | --- |
 | `load.reference.opens` | The reference holo opens, with its name, limits, vector count and identities verified. | + | - | N/A | - |
 | `load.reference-v5.opens` | The reference holo v5, a UORC archive, opens with the same name, limits and vectors as the v4 reference. | + | - | N/A | - |
-| `load.refuse.empty` | An empty file is refused. | + | - | N/A | - |
-| `load.refuse.too-short` | A file shorter than a header and a footer is refused. | + | - | N/A | - |
+| `load.refuse.empty` | An empty file is refused. | + | - | N/A | + |
+| `load.refuse.too-short` | A file shorter than a header and a footer is refused. | + | - | N/A | + |
 | `load.refuse.bad-magic` | A file that does not start with HOLO is refused. | + | - | N/A | + |
 | `load.refuse.bad-version` | A physical version other than 4 is refused. | + | - | N/A | + |
 | `load.refuse.bad-flags` | Non-zero flags are refused. | + | - | N/A | + |
-| `load.refuse.truncated-table` | A section table that overruns the file is refused. | + | - | N/A | - |
-| `load.refuse.section-overrun` | A section that overruns the body is refused, even under a correct footer. | + | - | N/A | - |
-| `load.refuse.unknown-kind` | An unknown section kind is refused, even under a correct footer. | + | - | N/A | - |
+| `load.refuse.truncated-table` | A section table that overruns the file is refused. | + | - | N/A | + |
+| `load.refuse.section-overrun` | A section that overruns the body is refused, even under a correct footer. | + | - | N/A | + |
+| `load.refuse.unknown-kind` | An unknown section kind is refused, even under a correct footer. | + | - | N/A | + |
 | `load.refuse.manifest-uri` | An application manifest with the wrong URI is refused. | + | - | N/A | - |
 | `load.refuse.label-not-a-blob` | A directory that names a blob the archive does not hold is refused. | + | - | N/A | - |
 | `load.refuse.undecodable-guest` | A guest that does not compile is refused. | + | - | N/A | - |
@@ -179,7 +179,7 @@ Which Prism runtime passes which part of the runtime contract, from the results 
 | `verify.damage.model-document` | A damaged model document fails integrity and the document check. | + | + | N/A | - |
 | `verify.damage.manifest` | A damaged application manifest is not the Wire template, which the codec refuses: no verdict. | + | + | N/A | - |
 | `verify.damage.p0-fails-on-integrity` | Damage fails every policy: under P0 the level is P0, and the policy still fails with policy.integrity. | + | + | N/A | - |
-| `verify.no-verdict.empty` | An empty file gets no verdict. | + | + | N/A | - |
+| `verify.no-verdict.empty` | An empty file gets no verdict. | + | + | N/A | + |
 | `verify.no-verdict.bad-magic` | A file that is not a holo gets no verdict. | + | + | N/A | + |
 | `verify.no-verdict.bad-version` | An unknown physical version gets no verdict. | + | + | N/A | + |
 | `verify.no-verdict.bad-flags` | Non-zero flags get no verdict. | + | + | N/A | + |
@@ -331,11 +331,6 @@ Which Prism runtime passes which part of the runtime contract, from the results 
 | Omega GPU | `errors.capability.denied-resource` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
 | Omega GPU | `load.reference.opens` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
 | Omega GPU | `load.reference-v5.opens` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
-| Omega GPU | `load.refuse.empty` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
-| Omega GPU | `load.refuse.too-short` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
-| Omega GPU | `load.refuse.truncated-table` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
-| Omega GPU | `load.refuse.section-overrun` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
-| Omega GPU | `load.refuse.unknown-kind` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
 | Omega GPU | `load.refuse.manifest-uri` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
 | Omega GPU | `load.refuse.label-not-a-blob` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
 | Omega GPU | `load.refuse.undecodable-guest` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
@@ -360,7 +355,6 @@ Which Prism runtime passes which part of the runtime contract, from the results 
 | Omega GPU | `verify.damage.model-document` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
 | Omega GPU | `verify.damage.manifest` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
 | Omega GPU | `verify.damage.p0-fails-on-integrity` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
-| Omega GPU | `verify.no-verdict.empty` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
 | Omega GPU | `verify.env.sets-minimum` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
 | Omega GPU | `verify.env.call-wins` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
 | Omega GPU | `verify.session-world.documents` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |

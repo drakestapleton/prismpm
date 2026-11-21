@@ -29,8 +29,9 @@ on:
       - crates/conformance/runtime/**
       - crates/conformance/src/bin/prism-conformance-shim.rs
       - crates/prismpm/src/inspect/**
-      # The Omega GPU runtime's shim and declaration.
+      # The Omega GPU runtime's shim, declaration, and world contract.
       - contrib/omega-gpu/**
+      - sdk/npm/spec/worlds/gpu-omega.wit
       - Cargo.lock
       - rust-toolchain.toml
       - COMPLIANCE.md
@@ -50,8 +51,9 @@ on:
       - crates/conformance/runtime/**
       - crates/conformance/src/bin/prism-conformance-shim.rs
       - crates/prismpm/src/inspect/**
-      # The Omega GPU runtime's shim and declaration.
+      # The Omega GPU runtime's shim, declaration, and world contract.
       - contrib/omega-gpu/**
+      - sdk/npm/spec/worlds/gpu-omega.wit
       - Cargo.lock
       - rust-toolchain.toml
       - COMPLIANCE.md
@@ -210,7 +212,7 @@ jobs:
           if [ -f target/conformance/COMPLIANCE.md ]; then
             sed -n '/^## Features/,/^## Checks/p' target/conformance/COMPLIANCE.md | sed '$d' >> "$GITHUB_STEP_SUMMARY"
           fi
-          for runtime in js rust; do
+          for runtime in js rust omega-gpu; do
             if [ -f "target/conformance/$runtime.txt" ]; then
               tail -n 2 "target/conformance/$runtime.txt" >> "$GITHUB_STEP_SUMMARY"
             fi

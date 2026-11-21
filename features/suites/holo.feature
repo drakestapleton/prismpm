@@ -354,3 +354,10 @@ Feature: holo
     And the counter is a session-world application with its bounds and its acceptance sessions
     And each projection is valid against prismpm/model-document/9
     And a session member that disagrees with the contract, a frame over the declared memory and an input the acceptance does not carry are each refused with PP2027
+
+  @HO-51 @build
+  Scenario: The experimental Omega GPU world hologram:gpu/omega-om@1 (sdk/npm/spec/worlds/gpu-omega.wit) and its prism/conformance-shim/1 runtime shim (contrib/omega-gpu/) enforce canonical UOR-GPU-1 headers, unsigned-envelope invariants, dual SHA-256 and BLAKE3 digests, SM121 896B QMD v05.00 SKEDCHECK05 and SPIR-V 1.0 OpenCL Kernel framing, caller-supplied world and digest pins, registered diagnostic codes, and schema-valid prism/verdict/1 verdicts.
+    Given UOR-GPU-1 SM121 and SPIR-V 1.0 GPU bundles and the omega-gpu conformance shim
+    When inspect, load, and verify run against valid bundles, caller-supplied pins, malformed headers, unsigned-envelope violations, invalid SM121/SPIR-V framing, and tampered payloads
+    Then valid SM121 and SPIR-V 1.0 bundles inspect as conforming, load as verified, and pass P0 with schema-valid prism/verdict/1 verdicts
+    And caller-supplied world and archive/payload digest pins, oversized contract strings, malformed headers, unsigned signature smuggling, invalid SM121/SPIR-V framing, and tampered payloads are each refused with registered diagnostic codes and schema-valid verdicts

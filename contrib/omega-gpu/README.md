@@ -14,6 +14,7 @@ On an AArch64 Linux host with `omega-mv` checked out and `prism-gpu` built by `s
 
 ## Honest scope
 
-- Implements `describe`, `inspect`, `verify`, and `load` for `UOR-GPU-1` GPU bundles and `.holo` container refusal checks (`empty`, `too-short`, `bad-magic`, `bad-version`, `bad-flags`, `truncated-table`, `section-overrun`, `unknown-kind`) plus policy validation.
+- Registered under capability **`HO-51`** (`model/ids.toml`, `features/suites/holo.feature`, `crates/conformance/tests/conformance.rs`, `contrib/omega-gpu/test/omega-gpu.test.mjs`).
+- Implements `describe`, `inspect`, `verify`, and `load` for canonical 384-byte `UOR-GPU-1` GPU bundles (including unsigned-envelope invariants, dual SHA-256 + BLAKE3 seals, SM121 896B QMD v05.00 SKEDCHECK05 and SPIR-V 1.0 OpenCL Kernel framing, caller-supplied world/digest pins, registered diagnostic codes, and schema-valid `prism/verdict/1` verdicts) plus `.holo` container refusal checks (`empty`, `too-short`, `bad-magic`, `bad-version`, `bad-flags`, `truncated-table`, `section-overrun`, `unknown-kind`) and policy validation.
 - Declares `notApplicable` for Core-Wasm-only / host features (`auth`, `capabilities`, `dispatch`, `replay`) and `xfail` in `declaration.json` for Core-Wasm guest archive checks.
 - Physical GB10 silicon execution is `NOT_RUN`; kernel replay in `omega-mv` runs in deterministic pure seeded-Omega host VMs (`HOST_TESTED` / `EMULATED`).

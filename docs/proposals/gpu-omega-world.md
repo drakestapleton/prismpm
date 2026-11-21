@@ -3,6 +3,7 @@
 | | |
 | --- | --- |
 | Status | Proposed, Experimental |
+| Capability | `HO-51` (suite `holo`, level `build`; `SPEC.md` §12.19, `features/suites/holo.feature`) |
 | Reference implementation | [omega-mv `protocol/uor-gpu/`](https://interplane.io/drakestapleton/omega-mv) at commit `fb18bb7736535229d370f60a1b2cee2f86c6d9e9` |
 | Depends on | #278 (WIT world registry), #287 (`@prism-code/conformance`), #269 (assurance levels `P0..P3`) |
 | Related | #310 (ML-BOM for model inputs) |
@@ -92,10 +93,12 @@ The reference implementation pins `protocol/uor-gpu/proofs/UorGpuWorld.lean` (SH
 
 ## Test plan
 
+- `cargo run --locked -p xtask -- validate-model` and `cargo run --locked -p xtask -- validate-spec-links` verify `HO-51` registration across `model/ids.toml`, `features/suites/holo.feature`, `SPEC.md`, `CONFORMANCE.md`, and `crates/conformance`.
+- `cargo test --locked -p repo-conformance --test conformance conformance_ho_51 -- --exact` and `node --test "contrib/omega-gpu/test/omega-gpu.test.mjs"` exercise all 8 `HO-51` GPU bundle fixtures (SM121 896B QMD v05.00 SKEDCHECK05, SPIR-V 1.0 OpenCL framing, unsigned-envelope invariants, canonical header discriminants, caller-supplied world/digest pins, bounded verdict messages, registered diagnostic codes, and `prism/verdict/1` schema validation).
 - `node sdk/npm/conformance/bin/prism-conformance.mjs gate --base origin/main --head HEAD` passes the `world` format rule via `world.gpu-omega.pin-contract-mismatch`.
 - `node sdk/npm/conformance/bin/prism-conformance.mjs run --runtime omega-gpu` passes with every non-GPU feature honestly declared in `contrib/omega-gpu/declaration.json`.
-- `node sdk/npm/conformance/bin/prism-conformance.mjs run --runtime js` and `--runtime rust` pass the updated `world.json` scenario suite.
-- `node --test sdk/npm/spec/test/world.test.mjs` and `node --test sdk/npm/conformance/test/*.test.mjs` pass.
+- `node sdk/npm/conformance/bin/prism-conformance.mjs run --runtime js` and `--runtime rust` pass the updated `world.json` scenario suite, and `COMPLIANCE.md` passes `matrix --check`.
+- `node --test "sdk/npm/spec/test/*.test.mjs"`, `node --test "sdk/npm/conformance/test/*.test.mjs"`, and `node --test "sdk/npm/prism-code/test/errors-registered.test.mjs"` pass.
 
 ## Alternatives
 

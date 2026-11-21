@@ -487,6 +487,12 @@ level = "build"
 statement = "A binary application, Foundation.Binary.Application.V1.Model.BinaryApplication with profile prismpm/binary-application/1, projects to prismpm/model-document/9: the stateless world with acceptance vectors, or the session or checkpoint world with session bounds and acceptance sessions, requests and responses up to 64 MiB, and inputs named by BLAKE3 digest whose bytes acceptanceInputs carries; a declaration whose session member disagrees with its contract, whose resolved frame cannot fit its declared memory, or whose acceptance names an input it does not carry is refused with PP2027, and the projection is valid against the closed model-document/9 schema."
 
 [[id]]
+id = "HO-51"
+suite = "holo"
+level = "build"
+statement = "The experimental Omega GPU world hologram:gpu/omega-om@1 (sdk/npm/spec/worlds/gpu-omega.wit) and its prism/conformance-shim/1 runtime shim (contrib/omega-gpu/) enforce canonical UOR-GPU-1 headers, unsigned-envelope invariants, dual SHA-256 and BLAKE3 digests, SM121 896B QMD v05.00 SKEDCHECK05 and SPIR-V 1.0 OpenCL Kernel framing, caller-supplied world and digest pins, registered diagnostic codes, and schema-valid prism/verdict/1 verdicts."
+
+[[id]]
 id = "CT-01"
 suite = "controller"
 level = "build"
@@ -1631,9 +1637,3 @@ id = "LP-11"
 suite = "lean-prover"
 level = "build"
 statement = "Blob collection keeps exactly the blobs a pinned manifest names."
-
-[[id]]
-id = "HO-51"
-suite = "conformance"
-level = "build"
-statement = "The experimental Omega GPU world hologram:gpu/omega-om@1 (sdk/npm/spec/worlds/gpu-omega.wit) and its prism/conformance-shim/1 runtime shim (contrib/omega-gpu/) enforce UOR-GPU-1 dual digests, SM121 896B QMD v05.00 SKEDCHECK05 and SPIR-V 1.0 payload framing, caller-supplied world/digest pins, and schema-valid prism/verdict/1 verdicts."
