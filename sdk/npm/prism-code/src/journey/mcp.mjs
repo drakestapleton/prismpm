@@ -288,7 +288,7 @@ export function createServer({ cwd = process.cwd(), send, gaps = gapLedger() }) 
       const now = status();
       const session = load();
       // A build of an earlier model is not this app's build: it is left out.
-      if (!now.built?.current) delete session.status.ruleApp;
+      if (!now.built?.current) { delete session.status.ruleApp; delete session.status.built; }
       let pushed;
       try {
         if (!now.proved?.current) throw new PrismCodeError('bundle.unproved', 'Only a proved app is pushed, and this model as it is on disk is not proved. Call prism_build first.');
@@ -322,7 +322,7 @@ export function createServer({ cwd = process.cwd(), send, gaps = gapLedger() }) 
       writeSession(target, session);
       const answer = { ok: proved.ok, address: pulled.address, installed: target, starter: pulled.manifest.starter, proved: { ok: proved.ok, message: proved.message, theorems: proved.theorems ?? proved.guarantees ?? null } };
       if (!proved.ok) return { ...answer, next: "Lean's kernel did not prove this app here, so nothing was built and nothing runs from it." };
-      if (pulled.manifest.built && isRuleApp(session)) {
+      if (pulled.manifest.built) {
         const built = await build(target, session, { log, gaps });
         writeSession(target, session);
         const same = built.ok && built.address === pulled.manifest.built.address;

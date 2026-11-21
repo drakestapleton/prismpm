@@ -20,6 +20,7 @@ import { canonicalJson } from '../archive.mjs';
 import { compileGuest, runGuest } from '../core.mjs';
 import { sha256HexSync } from '../sha256.mjs';
 import { kappa, writeObjects } from '../uorc.mjs';
+import { kappa as label } from '../blake3.mjs';
 import { ModelEvalRefused, modelProgram } from './model-eval.mjs';
 import { EVALUATOR_GUEST, admitEvaluator, encodeProgram, guestAgrees, linkGuest } from './model-guest.mjs';
 import { textViewBundle } from './text-view.mjs';
@@ -77,7 +78,9 @@ export function modelDocument(snapshot, application, { snapshotId = null } = {})
 /**
  * Build the holo. `evaluator` is the evaluator guest's bytes, admitted only when they are the pinned ones.
  * `snapshotBytes`, LexLean's exact output, names the snapshot in the records when given.
- * Returns `{ bytes, kappa, name, semanticId, guest, vectors, compared, objects }`.
+ * Returns `{ bytes, label, kappa, name, semanticId, guest, vectors, compared, objects }`. `label` is the holo's
+ * address, the UOR κ-label of its bytes (BLAKE3). `kappa` is the identity the holo v5 format gives itself and its
+ * members, which is SHA-256 (ADR-017); it is kept because every reader of a holo checks it.
  */
 export async function buildHolo(snapshot, { evaluator, snapshotBytes = null } = {}) {
   const program = modelProgram(snapshot);
@@ -120,7 +123,7 @@ export async function buildHolo(snapshot, { evaluator, snapshotBytes = null } = 
   }));
   const provenance = enc.encode(canonicalJson({
     application_kappa: kappa(manifest),
-    builder: { evaluator_guest: EVALUATOR_GUEST.kappa, name: HOLO_BUILDER, vectors: { compared: compared.total, replayed: reference.total } },
+    builder: { evaluator_guest: EVALUATOR_GUEST.kappa, guest: label(guest), model: label(model), name: HOLO_BUILDER, ...(snapshotBytes ? { snapshot: label(new Uint8Array(snapshotBytes)) } : {}), view: label(view), vectors: { compared: compared.total, replayed: reference.total } },
     cargo_name: app.cargoName,
     cargo_version: app.cargoVersion,
     compiler_semantics_id: snapshot.compiler_semantics_id,
@@ -135,5 +138,5 @@ export async function buildHolo(snapshot, { evaluator, snapshotBytes = null } = 
   }));
   const objects = [manifest, source, provenance, capabilities, guest, view, model];
   const bytes = writeObjects(objects);
-  return { bytes, kappa: kappa(bytes), name: app.name, semanticId: snapshot.semantic_id, guest, vectors: { total: reference.total, passed: reference.passed }, compared: { total: compared.total, agreed: compared.agreed }, objects: objects.map((o) => o.length) };
+  return { bytes, label: label(bytes), kappa: kappa(bytes), name: app.name, semanticId: snapshot.semantic_id, guest, vectors: { total: reference.total, passed: reference.passed }, compared: { total: compared.total, agreed: compared.agreed }, objects: objects.map((o) => o.length) };
 }

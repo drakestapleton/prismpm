@@ -45,8 +45,8 @@ for (const name of NAMES) {
   const t1 = performance.now();
   const built = await buildHolo(taken.snapshot, { evaluator, snapshotBytes: taken.bytes });
   const vector = modelProgram(taken.snapshot).application.acceptanceVectors.find((v) => v.request.length > 0);
-  node.push({ name, snapshotMs: Math.round(t1 - t0), buildMs: Math.round(performance.now() - t1), holoBytes: built.bytes.length, kappa: built.kappa });
-  projects.set(name, JSON.stringify({ expected: built.kappa, vector: { request: base64(vector.request), response: base64(vector.response) }, files: Object.fromEntries([...projectFiles(dir)].map(([path, bytes]) => [path, base64(bytes)])) }));
+  node.push({ name, snapshotMs: Math.round(t1 - t0), buildMs: Math.round(performance.now() - t1), holoBytes: built.bytes.length, label: built.label });
+  projects.set(name, JSON.stringify({ expected: built.label, vector: { request: base64(vector.request), response: base64(vector.response) }, files: Object.fromEntries([...projectFiles(dir)].map(([path, bytes]) => [path, base64(bytes)])) }));
 }
 
 const TYPES = { '.html': 'text/html', '.mjs': 'text/javascript', '.js': 'text/javascript', '.json': 'application/json', '.wasm': 'application/wasm', '.holo': 'application/octet-stream', '.gz': 'application/gzip' };

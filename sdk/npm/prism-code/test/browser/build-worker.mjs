@@ -52,7 +52,7 @@ async function one(name, { lexlean, evaluator, shell }) {
   const snapshotMs = ms(t1);
   const t2 = now();
   const built = await buildHolo(JSON.parse(dec.decode(snapshotBytes)), { evaluator, snapshotBytes });
-  const row = { name, ok: first.ok && second.ok, checkMs: [first.ms, second.ms], snapshotMs, snapshotBytes: snapshotBytes.length, buildMs: ms(t2), holoBytes: built.bytes.length, kappa: built.kappa, vectors: built.vectors, compared: built.compared, expected: listed.expected, sameAsNode: built.kappa === listed.expected };
+  const row = { name, ok: first.ok && second.ok, checkMs: [first.ms, second.ms], snapshotMs, snapshotBytes: snapshotBytes.length, buildMs: ms(t2), holoBytes: built.bytes.length, label: built.label, vectors: built.vectors, compared: built.compared, expected: listed.expected, sameAsNode: built.label === listed.expected };
   row.ok = row.ok && row.sameAsNode;
   if (shell) {
     // Kept under its BLAKE3 label, read back, and read again after one byte of it is changed where it is kept.

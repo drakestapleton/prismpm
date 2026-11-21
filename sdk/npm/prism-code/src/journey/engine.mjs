@@ -301,21 +301,21 @@ async function buildModelApp(dir, session, { log, env, snapshot, gaps, kernel, w
   const seconds = Math.round((Date.now() - started) / 100) / 10;
   const ok = app.identities.verified === true && acceptance.failed.length === 0;
   session.status.holo = ok ? path : null;
-  session.status.built = ok ? { source: sourceDigest(dir), path, kappa: built.kappa, semanticId: `sha256:${built.semanticId}`, at: new Date().toISOString(), seconds, passed: acceptance.passed, total: acceptance.total, builder: 'evaluator-guest' } : null;
+  session.status.built = ok ? { source: sourceDigest(dir), path, address: built.label, semanticId: `sha256:${built.semanticId}`, at: new Date().toISOString(), seconds, passed: acceptance.passed, total: acceptance.total, builder: 'evaluator-guest' } : null;
   return {
     ok,
     stage: 'build',
     where: 'kernel',
     seconds,
     holo: path,
-    address: built.kappa,
+    address: built.label,
     semanticId: `sha256:${built.semanticId}`,
     bytes: built.bytes.length,
     theorems: provedNow.theorems,
     vectors: { passed: acceptance.passed, total: acceptance.total },
     compared: built.compared,
     message: ok
-      ? `Built in ${seconds} s with nothing compiled: the holo ${relative(process.cwd(), path) || path}, ${built.bytes.length} bytes, named ${built.kappa}, for the model sha256:${built.semanticId}. Proved: Lean's kernel accepted every one of the model's ${provedNow.theorems.length} theorems. Tested, not proved: the holo's guest is the evaluator guest running the model's program, and it answers ${acceptance.passed} of ${acceptance.total} acceptance vectors and ${built.compared.agreed} of ${built.compared.total} requests made from them as the model's own definitions do.`
+      ? `Built in ${seconds} s with nothing compiled: the holo ${relative(process.cwd(), path) || path}, ${built.bytes.length} bytes, named ${built.label}, for the model sha256:${built.semanticId}. Proved: Lean's kernel accepted every one of the model's ${provedNow.theorems.length} theorems. Tested, not proved: the holo's guest is the evaluator guest running the model's program, and it answers ${acceptance.passed} of ${acceptance.total} acceptance vectors and ${built.compared.agreed} of ${built.compared.total} requests made from them as the model's own definitions do.`
       : `Written, but the holo does not verify or ${acceptance.failed.length} of ${acceptance.total} acceptance vectors fail through it. Nothing is recorded as built.`,
   };
 }
