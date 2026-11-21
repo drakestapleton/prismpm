@@ -89,8 +89,8 @@ test('planted defect: a reference that answers otherwise is seen too, so the com
 test('a model that uses what the guest does not run is refused by name, before any guest exists', { skip }, () => {
   const changed = JSON.parse(JSON.stringify(snapshot('loan')));
   const entry = changed.modules.find((m) => m.name === 'LoanApproval').semantic.declarations.find((d) => d.name === 'dispatch');
-  entry.body = { kind: 'if', condition: { kind: 'bool', value: true }, then_value: entry.body, else_value: { kind: 'primitive', operation: 'utf8_encode', arguments: [{ kind: 'string', value: 'x' }], result: { kind: 'bytes' } } };
-  assert.throws(() => encodeProgram(changed), (e) => e.code === 'guest.uncovered' && /utf8_encode/.test(e.message));
+  entry.body = { kind: 'if', condition: { kind: 'bool', value: true }, then_value: entry.body, else_value: { kind: 'primitive', operation: 'map_lookup', arguments: [], result: { kind: 'bytes' } } };
+  assert.throws(() => encodeProgram(changed), (e) => e.code === 'guest.uncovered' && /map_lookup/.test(e.message));
 });
 
 test('the linker refuses what is not the evaluator guest', { skip }, async () => {

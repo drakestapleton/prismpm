@@ -22,8 +22,8 @@ import { kappa } from '../blake3.mjs';
  */
 export const EVALUATOR_GUEST = Object.freeze({
   file: 'guest/evaluator.wasm',
-  kappa: 'blake3:fa9412fe2083b5ff501b403a93af20215ade5ec0a013aab6ba35b0033acba7f7',
-  bytes: 15409,
+  kappa: 'blake3:1c7808481594cd3ed3966f6a6096a9ccc5a565c990b45365d3b8f43e276e30bc',
+  bytes: 22709,
   rustc: '1.97.1',
 });
 
@@ -39,9 +39,19 @@ const KIND = Object.freeze({ var: 0, num: 1, bytes: 2, string: 3, bool: 4, unit:
 const TAG = Object.freeze({ 'Option.none': 0, 'Option.some': 1, 'List.nil': 2, 'List.cons': 3, 'Nat.zero': 4, 'Nat.succ': 5, 'Bool.false': 6, 'Bool.true': 7, 'Ordering.lt': 8, 'Ordering.eq': 9, 'Ordering.gt': 10, 'Prod.mk': 11 });
 const FIRST_OWN_TAG = 32;
 /** The primitives the evaluator guest runs, and the result types its arithmetic is exact at. */
-export const GUEST_PRIMITIVES = Object.freeze({ subtract: 0, multiply: 1, quotient: 2, remainder: 3, to_nat: 4, to_int: 5, equal: 6, append: 7, length: 8, index: 9, slice: 10, compare_bytes: 11 });
-const ARITHMETIC = new Set(['subtract', 'multiply', 'quotient', 'remainder']);
-const RESULT = Object.freeze({ nat: 0, int: 1 });
+export const GUEST_PRIMITIVES = Object.freeze({ subtract: 0, multiply: 1, quotient: 2, remainder: 3, to_nat: 4, to_int: 5, equal: 6, append: 7, length: 8, index: 9, slice: 10, compare_bytes: 11, negate: 12, checked_add: 13, checked_subtract: 14, checked_multiply: 15, checked_negate: 16, checked_quotient: 17, checked_convert: 18, bit_and: 19, bit_or: 20, bit_xor: 21, bit_not: 22, shift_left: 23, shift_right: 24, utf8_encode: 25, utf8_decode: 26 });
+/** The result types the guest computes at, as the program names them. */
+const RESULT = Object.freeze({ nat: 0, int: 1, uint8: 2, uint16: 3, uint32: 4, uint64: 5, int8: 6, int16: 7, int32: 8, int64: 9 });
+const FIXED_ONLY = new Set(['checked_add', 'checked_subtract', 'checked_multiply', 'checked_negate', 'checked_quotient', 'checked_convert', 'bit_and', 'bit_or', 'bit_xor', 'bit_not', 'shift_left', 'shift_right']);
+const OPTIONAL = new Set(['checked_add', 'checked_subtract', 'checked_multiply', 'checked_negate', 'checked_quotient', 'checked_convert', 'shift_left', 'shift_right']);
+/** The type a primitive computes at: its result, or what its optional result holds. Null when the guest has no such type for it. */
+const resultKind = (t) => {
+  const kind = (OPTIONAL.has(t.operation) ? (t.result.element ?? t.result.value ?? t.result.argument) : t.result)?.kind;
+  if (FIXED_ONLY.has(t.operation)) return RESULT[kind] >= 2 ? kind : null;
+  if (t.operation === 'quotient' || t.operation === 'remainder') return kind === 'nat' || kind === 'int' ? kind : null;
+  if (t.operation === 'subtract' || t.operation === 'multiply' || t.operation === 'negate') return RESULT[kind] === undefined ? null : kind;
+  return 'nat';
+};
 const I128_MIN = -(1n << 127n);
 const I128_MAX = (1n << 127n) - 1n;
 
@@ -69,7 +79,7 @@ export function encodeProgram(snapshot) {
     }
     if (t.kind === 'primitive') {
       if (GUEST_PRIMITIVES[t.operation] === undefined) uncovered.add(`primitive ${t.operation}`);
-      else if (ARITHMETIC.has(t.operation) && RESULT[t.result.kind] === undefined) uncovered.add(`primitive ${t.operation} at ${t.result.kind}`);
+      else if (resultKind(t) === null) uncovered.add(`primitive ${t.operation} at ${t.result.kind}`);
     }
     for (const value of Object.values(t)) if (value && typeof value === 'object') visit(value, here);
   };
@@ -139,7 +149,7 @@ export function encodeProgram(snapshot) {
           const slotLists = branches.map((b) => list(b.taken));
           return emit(KIND.match, scrutinee, list(branches.flatMap((b, i) => [b.tag, b.body, b.taken.length, slotLists[i]])), branches.length);
         }
-        case 'primitive': { const parts = t.arguments.map(go); return emit(KIND.primitive, GUEST_PRIMITIVES[t.operation] | ((RESULT[t.result.kind] ?? 0) << 16), list(parts), parts.length); }
+        case 'primitive': { const parts = t.arguments.map(go); return emit(KIND.primitive, GUEST_PRIMITIVES[t.operation] | (RESULT[resultKind(t)] << 16), list(parts), parts.length); }
         default: return refuse('guest.uncovered', `term ${t.kind} is not run by the evaluator guest`);
       }
     };

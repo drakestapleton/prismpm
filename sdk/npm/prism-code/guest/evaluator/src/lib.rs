@@ -7,8 +7,8 @@
 //! It mirrors the reference evaluator (`src/journey/model-eval.mjs`) term for term, and a build compares the two
 //! on the app's vectors. That it follows the model is tested, not proved.
 //!
-//! Anything this module cannot do exactly is a trap, never an answer: a number outside 127 bits, memory that
-//! cannot grow, a primitive on a type it does not cover. A trap reaches the host as a failed request.
+//! Anything this module cannot do exactly is a trap, never an answer: a number outside 127 bits, or memory that
+//! cannot grow. A trap reaches the host as a failed request.
 #![no_std]
 
 extern crate alloc;
@@ -105,6 +105,8 @@ enum V {
 
 const NONE: u32 = 0;
 const SOME: u32 = 1;
+const NIL: u32 = 2;
+const CONS: u32 = 3;
 const ZERO: u32 = 4;
 const SUCC: u32 = 5;
 const FALSE: u32 = 6;
@@ -241,37 +243,140 @@ fn part(n: &Node, index: u32, at: u32) -> u32 {
     }
 }
 
+// ---- Result types, as the program names them: 0 Nat, 1 Int, then the fixed widths.
+
+/// The bits of a fixed-width type and whether it is signed; `None` for Nat and Int.
+fn fixed(kind: u32) -> Option<(u32, bool)> {
+    match kind {
+        2 => Some((8, false)),
+        3 => Some((16, false)),
+        4 => Some((32, false)),
+        5 => Some((64, false)),
+        6 => Some((8, true)),
+        7 => Some((16, true)),
+        8 => Some((32, true)),
+        9 => Some((64, true)),
+        _ => None,
+    }
+}
+
+/// `Fixed.fromInt`: the value modulo the width, in the type's range.
+fn wrap(kind: u32, value: i128) -> i128 {
+    let (bits, signed) = match fixed(kind) {
+        Some(shape) => shape,
+        None => trap(),
+    };
+    let modulus = 1i128 << bits;
+    let low = value.rem_euclid(modulus);
+    if signed && low >= modulus / 2 { low - modulus } else { low }
+}
+
+/// `checkedFromInt`: the value when the type holds it.
+fn checked(kind: u32, value: Option<i128>) -> V {
+    let (bits, signed) = match fixed(kind) {
+        Some(shape) => shape,
+        None => trap(),
+    };
+    let (least, greatest) = if signed { (-(1i128 << (bits - 1)), (1i128 << (bits - 1)) - 1) } else { (0, (1i128 << bits) - 1) };
+    match value {
+        Some(n) if n >= least && n <= greatest => ctor(SOME, alloc::vec![V::Num(n)]),
+        _ => ctor(NONE, Vec::new()),
+    }
+}
+
+/// Arithmetic at a result type: Nat and Int are exact, a fixed width wraps.
+fn at(kind: u32, value: i128) -> V {
+    V::Num(if fixed(kind).is_some() { wrap(kind, value) } else { value })
+}
+
+fn items(v: &V) -> Vec<V> {
+    let mut out = Vec::new();
+    let mut cell = v.clone();
+    loop {
+        let next = match &cell {
+            V::Ctor(CONS, parts) => {
+                out.push(parts[0].clone());
+                parts[1].clone()
+            }
+            V::Ctor(NIL, _) => return out,
+            _ => trap(),
+        };
+        cell = next;
+    }
+}
+
+fn list(values: &[V]) -> V {
+    let mut out = ctor(NIL, Vec::new());
+    for value in values.iter().rev() {
+        out = ctor(CONS, alloc::vec![value.clone(), out]);
+    }
+    out
+}
+
+fn option(value: Option<V>) -> V {
+    match value {
+        Some(v) => ctor(SOME, alloc::vec![v]),
+        None => ctor(NONE, Vec::new()),
+    }
+}
+
 fn primitive(op: u32, kind: u32, v: &[V]) -> V {
     match op {
-        // subtract: Nat stops at zero, Int does not.
+        // subtract: Nat stops at zero, Int does not, a fixed width wraps.
         0 => {
             let d = exact(num(&v[0]).checked_sub(num(&v[1])));
-            V::Num(if kind == 0 && d < 0 { 0 } else { d })
+            if kind == 0 { V::Num(if d < 0 { 0 } else { d }) } else { at(kind, d) }
         }
-        1 => V::Num(exact(num(&v[0]).checked_mul(num(&v[1])))),
+        // A fixed width wraps, so a product past 127 bits is still exact once reduced; Nat and Int must fit.
+        1 => {
+            if fixed(kind).is_some() {
+                V::Num(wrap(kind, num(&v[0]).wrapping_mul(num(&v[1]))))
+            } else {
+                V::Num(exact(num(&v[0]).checked_mul(num(&v[1]))))
+            }
+        }
         // quotient and remainder: a zero divisor answers the stated zero case; both round toward zero.
         2 => V::Num(if num(&v[1]) == 0 { num(&v[2]) } else { exact(num(&v[0]).checked_div(num(&v[1]))) }),
         3 => V::Num(if num(&v[1]) == 0 { num(&v[2]) } else { exact(num(&v[0]).checked_rem(num(&v[1]))) }),
         4 | 5 => V::Num(num(&v[0])),
         6 => V::Bool(equal(&v[0], &v[1])),
-        7 => {
-            let mut out = (**bytes(&v[0])).clone();
-            out.extend_from_slice(bytes(&v[1]));
-            V::Bytes(Rc::new(out))
-        }
-        8 => V::Num(bytes(&v[0]).len() as i128),
+        7 => match &v[0] {
+            V::Bytes(left) => {
+                let mut out = (**left).clone();
+                out.extend_from_slice(bytes(&v[1]));
+                V::Bytes(Rc::new(out))
+            }
+            _ => {
+                let mut out = items(&v[0]);
+                out.extend(items(&v[1]));
+                list(&out)
+            }
+        },
+        8 => V::Num(match &v[0] {
+            V::Bytes(b) => b.len() as i128,
+            // String.length counts characters: every byte that does not continue one.
+            V::Str(text) => text.iter().filter(|byte| (**byte & 0xc0) != 0x80).count() as i128,
+            _ => items(&v[0]).len() as i128,
+        }),
         9 => {
-            let b = bytes(&v[0]);
             let i = num(&v[1]);
-            if i >= 0 && i < b.len() as i128 { ctor(SOME, alloc::vec![V::Num(b[i as usize] as i128)]) } else { ctor(NONE, Vec::new()) }
+            match &v[0] {
+                V::Bytes(b) => option(if i >= 0 && i < b.len() as i128 { Some(V::Num(b[i as usize] as i128)) } else { None }),
+                _ => {
+                    let all = items(&v[0]);
+                    option(if i >= 0 && i < all.len() as i128 { Some(all[i as usize].clone()) } else { None })
+                }
+            }
         }
         10 => {
-            let b = bytes(&v[0]);
             let (start, count) = (num(&v[1]), num(&v[2]));
-            if start >= 0 && count >= 0 && exact(start.checked_add(count)) <= b.len() as i128 {
-                ctor(SOME, alloc::vec![V::Bytes(Rc::new(b[size(start)..size(start + count)].to_vec()))])
-            } else {
-                ctor(NONE, Vec::new())
+            let end = exact(start.checked_add(count));
+            match &v[0] {
+                V::Bytes(b) => option(if start >= 0 && count >= 0 && end <= b.len() as i128 { Some(V::Bytes(Rc::new(b[size(start)..size(end)].to_vec()))) } else { None }),
+                _ => {
+                    let all = items(&v[0]);
+                    option(if start >= 0 && count >= 0 && end <= all.len() as i128 { Some(list(&all[size(start)..size(end)])) } else { None })
+                }
             }
         }
         11 => ctor(
@@ -282,6 +387,39 @@ fn primitive(op: u32, kind: u32, v: &[V]) -> V {
             },
             Vec::new(),
         ),
+        12 => at(kind, exact(num(&v[0]).checked_neg())),
+        // Checked arithmetic: none outside the type.
+        13 => checked(kind, num(&v[0]).checked_add(num(&v[1]))),
+        14 => checked(kind, num(&v[0]).checked_sub(num(&v[1]))),
+        15 => checked(kind, num(&v[0]).checked_mul(num(&v[1]))),
+        16 => checked(kind, num(&v[0]).checked_neg()),
+        17 => checked(kind, if num(&v[1]) == 0 { None } else { num(&v[0]).checked_div(num(&v[1])) }),
+        18 => checked(kind, Some(num(&v[0]))),
+        19 => V::Num(wrap(kind, num(&v[0]) & num(&v[1]))),
+        20 => V::Num(wrap(kind, num(&v[0]) | num(&v[1]))),
+        21 => V::Num(wrap(kind, num(&v[0]) ^ num(&v[1]))),
+        22 => V::Num(wrap(kind, !num(&v[0]))),
+        // A shift of the width or more is refused.
+        23 | 24 => {
+            let (bits, _) = match fixed(kind) {
+                Some(shape) => shape,
+                None => trap(),
+            };
+            let amount = num(&v[1]);
+            option(if amount >= 0 && amount < bits as i128 {
+                Some(V::Num(wrap(kind, if op == 23 { num(&v[0]) << amount as u32 } else { num(&v[0]) >> amount as u32 })))
+            } else {
+                None
+            })
+        }
+        25 => match &v[0] {
+            V::Str(text) => V::Bytes(text.clone()),
+            _ => trap(),
+        },
+        26 => {
+            let b = bytes(&v[0]);
+            option(if core::str::from_utf8(b).is_ok() { Some(V::Str(b.clone())) } else { None })
+        }
         _ => trap(),
     }
 }
