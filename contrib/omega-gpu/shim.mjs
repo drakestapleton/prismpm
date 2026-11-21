@@ -124,9 +124,9 @@ function validateSpirvPayload(payload) {
 
   const nw = payload.length / 4;
   let capMask = 0; // bit 0: Addresses (4), bit 1: Kernel (6)
-  let hasMemModel = false;
-  let entryId = 0;
-  let hasEntryFn = false;
+  let memModelCount = 0;
+  const entryIds = new Set();
+  const definedFns = new Set();
   let inFn = false;
 
   for (let p = 5; p < nw; ) {
@@ -138,27 +138,35 @@ function validateSpirvPayload(payload) {
     }
     if (op === 17) {
       // OpCapability
-      if (wc !== 2) return 'SPIR-V OpCapability must have word count 2.';
+      if (inFn || wc !== 2) return 'SPIR-V OpCapability must appear outside functions with word count 2.';
       const cap = w(p + 1);
       if (cap === 4) capMask |= 1;
       if (cap === 6) capMask |= 2;
     } else if (op === 14) {
       // OpMemoryModel Physical64(2) OpenCL(2)
-      if (wc !== 3) return 'SPIR-V OpMemoryModel must have word count 3.';
-      if (w(p + 1) === 2 && w(p + 2) === 2) hasMemModel = true;
+      if (inFn || wc !== 3) return 'SPIR-V OpMemoryModel must appear outside functions with word count 3.';
+      if (memModelCount > 0) return 'SPIR-V module must declare exactly one OpMemoryModel.';
+      if (w(p + 1) !== 2 || w(p + 2) !== 2) return 'SPIR-V OpMemoryModel must be Physical64 (2) OpenCL (2).';
+      memModelCount += 1;
     } else if (op === 15) {
       // OpEntryPoint Kernel(6) <id> <name...>
-      if (wc < 4 || w(p + 1) !== 6) return 'SPIR-V OpEntryPoint must target OpenCL Kernel execution model (6).';
+      if (inFn || wc < 4 || w(p + 1) !== 6) return 'SPIR-V OpEntryPoint must appear outside functions and target OpenCL Kernel execution model (6).';
       const eid = w(p + 2);
       if (eid === 0 || eid >= bound) return `SPIR-V OpEntryPoint id ${eid} is outside 1..${bound - 1}.`;
-      entryId = eid;
+      if (entryIds.has(eid)) return `SPIR-V duplicate OpEntryPoint for function id ${eid}.`;
+      entryIds.add(eid);
     } else if (op === 54) {
-      // OpFunction
-      if (inFn || wc < 5) return 'SPIR-V malformed or nested OpFunction.';
+      // OpFunction <ResultType> <ResultId> <FunctionControl> <FunctionType>
+      if (inFn || wc !== 5) return 'SPIR-V malformed or nested OpFunction.';
+      const resType = w(p + 1);
       const fnId = w(p + 2);
+      const fnType = w(p + 4);
+      if (resType === 0 || resType >= bound) return `SPIR-V OpFunction result type ${resType} is outside 1..${bound - 1}.`;
       if (fnId === 0 || fnId >= bound) return `SPIR-V OpFunction id ${fnId} is outside 1..${bound - 1}.`;
+      if (fnType === 0 || fnType >= bound) return `SPIR-V OpFunction type ${fnType} is outside 1..${bound - 1}.`;
+      if (definedFns.has(fnId)) return `SPIR-V duplicate OpFunction id ${fnId}.`;
+      definedFns.add(fnId);
       inFn = true;
-      if (entryId !== 0 && fnId === entryId) hasEntryFn = true;
     } else if (op === 56) {
       // OpFunctionEnd
       if (!inFn || wc !== 1) return 'SPIR-V malformed OpFunctionEnd.';
@@ -168,8 +176,11 @@ function validateSpirvPayload(payload) {
   }
 
   if (capMask !== 3) return 'SPIR-V OpenCL module must declare both Addresses and Kernel capabilities.';
-  if (!hasMemModel) return 'SPIR-V OpenCL module must declare Physical64 OpenCL memory model.';
-  if (entryId === 0 || !hasEntryFn) return 'SPIR-V OpenCL module must define its Kernel OpEntryPoint function.';
+  if (memModelCount !== 1) return 'SPIR-V OpenCL module must declare Physical64 OpenCL memory model.';
+  if (entryIds.size === 0) return 'SPIR-V OpenCL module must declare at least one Kernel OpEntryPoint.';
+  for (const eid of entryIds) {
+    if (!definedFns.has(eid)) return `SPIR-V OpenCL module does not define Kernel OpEntryPoint function ${eid}.`;
+  }
   if (inFn) return 'SPIR-V OpenCL module has an unterminated OpFunction.';
   return null;
 }
@@ -225,6 +236,8 @@ function parseUorGpuBundle(buf, forVerify = false) {
     if (attestSig !== ZERO64_HEX) {
       return fail('archive.kind', 'holo.documents', 'Unsigned UOR-GPU-1 bundle carries non-zero bytes in attest_sig.');
     }
+  } else if (attestSig === ZERO64_HEX) {
+    return fail('archive.kind', 'holo.documents', 'Signed UOR-GPU-1 bundle carries an all-zero attest_sig.');
   }
 
   const payload = buf.subarray(384, 384 + payloadLen);
@@ -238,7 +251,8 @@ function parseUorGpuBundle(buf, forVerify = false) {
   const payloadOk = actualPayloadSha === payloadSha;
   const uorIdOk = sha256Hex(buf.subarray(0, 224)) === uorIdSha;
   const holoInput = Buffer.concat([buf.subarray(0, 256), payload]);
-  const holoOk = blake3Hex(new Uint8Array(holoInput)) === holoBlake3;
+  const computedHoloBlake3 = blake3Hex(new Uint8Array(holoInput));
+  const holoOk = computedHoloBlake3 === holoBlake3;
   const isaStructError = isaCode === 1 ? validateSm121Payload(payload, blockX) : validateSpirvPayload(payload);
 
   return {
@@ -257,9 +271,11 @@ function parseUorGpuBundle(buf, forVerify = false) {
       signerPub,
       hasSignature,
     },
+    computedHoloBlake3,
     digests: {
       archive: { sha256: sha256Hex(buf), blake3: blake3Hex(new Uint8Array(buf)) },
       payload: { sha256: actualPayloadSha, blake3: actualPayloadBlake3 },
+      seal: { blake3: computedHoloBlake3 },
     },
     integrity: { payloadOk, uorIdOk, holoOk, isaStructOk: isaStructError === null, isaStructError },
   };
@@ -536,7 +552,7 @@ const OPERATIONS = {
 
       const verdict = {
         schema: 'prism/verdict/1',
-        holo: `blake3:${parsed.header.holoBlake3}`,
+        holo: `blake3:${parsed.computedHoloBlake3}`,
         level: 'P0',
         policy: { name: policyName, minimum },
         passed: !policyDenied,
@@ -569,7 +585,7 @@ const OPERATIONS = {
         kind: 'gpu-bundle',
         name: parsed.header.isa,
         verified: intact,
-        fingerprint: parsed.header.holoBlake3,
+        fingerprint: parsed.computedHoloBlake3,
         world: { contract: GPU_WORLD_CONTRACT, within: true, pure: true, effects: [] },
         capabilities: { set: null },
       };

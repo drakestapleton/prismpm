@@ -59,6 +59,9 @@ function buildSpirvPayload({
   bound = 8,
   schema = 0,
   includeKernelCap = true,
+  extraEntryId = null,
+  defineExtraEntryFn = false,
+  secondMemModel = false,
   truncateInst = false,
 } = {}) {
   const words = [
@@ -70,12 +73,28 @@ function buildSpirvPayload({
     (2 << 16) | 17, 4, // OpCapability Addresses
   ];
   if (includeKernelCap) words.push((2 << 16) | 17, 6); // OpCapability Kernel
-  words.push(
-    (3 << 16) | 14, 2, 2, // OpMemoryModel Physical64 OpenCL
-    (5 << 16) | 15, 6, 3, 0x64646176, 0, // OpEntryPoint Kernel %3 "vadd"
-    (5 << 16) | 54, 1, 3, 0, 2, // OpFunction %1 %3 None %2
-    (1 << 16) | 56, // OpFunctionEnd
-  );
+  words.push((3 << 16) | 14, 2, 2); // OpMemoryModel Physical64 OpenCL
+  if (secondMemModel) words.push((3 << 16) | 14, 0, 1); // conflicting duplicate OpMemoryModel
+  words.push((5 << 16) | 15, 6, 3, 0x64646176, 0); // OpEntryPoint Kernel %3 "vadd"
+  if (extraEntryId !== null) words.push((5 << 16) | 15, 6, extraEntryId, 0x62626176, 0);
+  if (extraEntryId !== null && defineExtraEntryFn) {
+    words.push(
+      (5 << 16) | 54, 1, extraEntryId, 0, 2, // OpFunction %1 %extraEntryId None %2
+      (1 << 16) | 56, // OpFunctionEnd
+    );
+  }
+  if (extraEntryId === null || defineExtraEntryFn) {
+    words.push(
+      (5 << 16) | 54, 1, 3, 0, 2, // OpFunction %1 %3 None %2
+      (1 << 16) | 56, // OpFunctionEnd
+    );
+  } else {
+    // Only define the second entry point, leaving %3 undefined.
+    words.push(
+      (5 << 16) | 54, 1, extraEntryId, 0, 2,
+      (1 << 16) | 56,
+    );
+  }
   if (truncateInst) words.push((5 << 16) | 17, 6); // claims 5 words, only 2 present
   const buf = Buffer.alloc(words.length * 4);
   words.forEach((v, i) => buf.writeUInt32LE(v >>> 0, i * 4));
@@ -331,12 +350,27 @@ test('SPIR-V 1.0 OpenCL Kernel framing and exact version 1.0 are enforced', asyn
     assert.equal(ver.response.result.passed, true);
   });
 
+  const goodMultiSpirv = buildUorGpuBundle({
+    isa: 2,
+    blockX: 64,
+    payload: buildSpirvPayload({ extraEntryId: 4, defineExtraEntryFn: true }),
+  });
+  await withBundle(goodMultiSpirv, async (archive) => {
+    const ver = await callShim(SHIM, { op: 'verify', archive, input: { policy: { minimum: 'P0' } } });
+    assert.equal(ver.response.ok, true);
+    assertValidVerdict(ver.response.result);
+    assert.equal(ver.response.result.passed, true);
+  });
+
   const badSpirvCases = [
     ['bad SPIR-V magic', buildSpirvPayload({ magic: 0xdeadbeef })],
     ['bad SPIR-V version 0xffffffff', buildSpirvPayload({ version: 0xffffffff })],
     ['non-1.0 SPIR-V version 1.5', buildSpirvPayload({ version: 0x00010500 })],
     ['non-zero SPIR-V schema', buildSpirvPayload({ schema: 1 })],
     ['entryId >= bound', buildSpirvPayload({ bound: 3 })],
+    ['multiple OpEntryPoint with first undefined', buildSpirvPayload({ extraEntryId: 4, defineExtraEntryFn: false })],
+    ['duplicate OpEntryPoint id', buildSpirvPayload({ extraEntryId: 3, defineExtraEntryFn: true })],
+    ['duplicate conflicting OpMemoryModel', buildSpirvPayload({ secondMemModel: true })],
     ['missing Kernel capability', buildSpirvPayload({ includeKernelCap: false })],
     ['truncated instruction', buildSpirvPayload({ truncateInst: true })],
   ];
@@ -367,11 +401,13 @@ test('unsigned GPU bundles with nonzero attest_sig or claimed level > P0 are ref
 
   const unsignedClaimP1 = buildUorGpuBundle({ claimedLevel: 1, payload: buildSm121Payload(256) });
   const unsignedClaimP3 = buildUorGpuBundle({ claimedLevel: 3, payload: buildSm121Payload(256) });
+  const signedZeroSig = buildUorGpuBundle({ claimedLevel: 1, signerPubByte: 1, sigByte0: 0, payload: buildSm121Payload(256) });
 
   for (const [label, bundle] of [
     ['smuggled attest_sig byte', smuggledSig],
     ['unsigned claiming P1', unsignedClaimP1],
     ['unsigned claiming P3', unsignedClaimP3],
+    ['signed with all-zero attest_sig', signedZeroSig],
   ]) {
     await withBundle(bundle, async (archive) => {
       for (const op of ['inspect', 'load', 'verify']) {
@@ -394,7 +430,7 @@ test('malformed UOR-GPU-1 headers and out-of-range discriminants are refused wit
     ['unsupported version 2', buildUorGpuBundle({ version: 2, payload: validPayload }), 'archive.version'],
     ['unknown target ISA 99', buildUorGpuBundle({ isa: 99, payload: validPayload }), 'archive.kind'],
     ['undefined math contract 77', buildUorGpuBundle({ math: 77, payload: validPayload }), 'archive.kind'],
-    ['out-of-range claimed level 99', buildUorGpuBundle({ claimedLevel: 99, signerPubByte: 1, payload: validPayload }), 'archive.kind'],
+    ['out-of-range claimed level 99', buildUorGpuBundle({ claimedLevel: 99, signerPubByte: 1, sigByte0: 1, payload: validPayload }), 'archive.kind'],
     ['invalid block_x 0', buildUorGpuBundle({ blockX: 0, payload: validPayload }), 'archive.kind'],
     ['invalid block_x 1025', buildUorGpuBundle({ blockX: 1025, payload: validPayload }), 'archive.kind'],
   ];
@@ -430,14 +466,24 @@ test('malformed UOR-GPU-1 headers and out-of-range discriminants are refused wit
   assert.equal(omitted.response.error.code, 'archive.input');
 });
 
-test('tampered UOR-GPU-1 payload fails integrity and respects allowUnverified on load', async () => {
-  const tampered = buildUorGpuBundle({ payload: buildSm121Payload(256) });
-  tampered[384] ^= 0xff;
-  await withBundle(tampered, async (archive) => {
+test('tampered UOR-GPU-1 payload fails integrity, reports computed seal identity, and respects allowUnverified on load', async () => {
+  const intact = buildUorGpuBundle({ payload: buildSm121Payload(256) });
+  const intactSeal = intact.subarray(256, 288).toString('hex');
+  const tamperedA = Buffer.from(intact);
+  tamperedA[384] ^= 0xff;
+  const tamperedB = Buffer.from(intact);
+  tamperedB[385] ^= 0xff;
+  const expectedSealA = blake3Hex(new Uint8Array(Buffer.concat([tamperedA.subarray(0, 256), tamperedA.subarray(384)])));
+  const expectedSealB = blake3Hex(new Uint8Array(Buffer.concat([tamperedB.subarray(0, 256), tamperedB.subarray(384)])));
+  assert.notEqual(expectedSealA, intactSeal);
+  assert.notEqual(expectedSealA, expectedSealB);
+
+  await withBundle(tamperedA, async (archive) => {
     const ver = await callShim(SHIM, { op: 'verify', archive, input: { policy: { minimum: 'P0' } } });
     assert.equal(ver.response.ok, true);
     assertValidVerdict(ver.response.result);
     assert.equal(ver.response.result.passed, false);
+    assert.equal(ver.response.result.holo, `blake3:${expectedSealA}`);
     assert.ok(ver.response.result.reasons.some((r) => r.check === 'holo.integrity'));
     assert.ok(ver.response.result.reasons.some((r) => r.check === 'policy.integrity'));
 
@@ -450,5 +496,17 @@ test('tampered UOR-GPU-1 payload fails integrity and respects allowUnverified on
     const allowed = await callShim(SHIM, { op: 'load', archive, input: { allowUnverified: true } });
     assert.equal(allowed.response.ok, true);
     assert.equal(allowed.response.result.verified, false);
+    assert.equal(allowed.response.result.fingerprint, expectedSealA);
+  });
+
+  await withBundle(tamperedB, async (archive) => {
+    const ver = await callShim(SHIM, { op: 'verify', archive, input: { policy: { minimum: 'P0' } } });
+    assert.equal(ver.response.ok, true);
+    assertValidVerdict(ver.response.result);
+    assert.equal(ver.response.result.holo, `blake3:${expectedSealB}`);
+
+    const allowed = await callShim(SHIM, { op: 'load', archive, input: { allowUnverified: true } });
+    assert.equal(allowed.response.ok, true);
+    assert.equal(allowed.response.result.fingerprint, expectedSealB);
   });
 });
