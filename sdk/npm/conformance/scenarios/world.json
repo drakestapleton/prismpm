@@ -207,6 +207,14 @@
           }
         }
       }
+    },
+    {
+      "id": "world.gpu-omega.pin-contract-mismatch",
+      "title": "A policy pinning the Omega GPU world hologram:gpu/omega-om@1 refuses a Core-Wasm @1 archive.",
+      "op": "verify",
+      "archive": "reference",
+      "input": { "policy": { "minimum": "P0", "world": { "contract": "hologram:gpu/omega-om@1" } } },
+      "expect": { "ok": true, "result": { "passed": false, "reasons": { "$contains": [{ "check": "world.hash" }] } } }
     }
   ]
 }

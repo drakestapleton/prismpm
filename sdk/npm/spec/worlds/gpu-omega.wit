@@ -1,0 +1,32 @@
+// The Omega GPU bundle contract `hologram:gpu/omega-om@1` (docs/proposals/gpu-omega-world.md).
+//
+// A pure-compute, offline-verifiable GPU kernel bundle world targeting Blackwell
+// SM121 SASS + full QMD v05.00 (896 bytes) and OpenCL SPIR-V 1.0 payloads compiled
+// from single-source pure seeded Omega (OM-2) by the SHA-256-pinned `seed/out/omc`.
+//
+// The bundle carries a canonical 384-byte `UOR-GPU-1` header (`uor_id_sha256` +
+// `.holo` BLAKE3 seal), pinned `omc_sha256`, pinned 78-theorem core Lean 4 proof
+// digest (`UorGpuWorld.lean`), `mlbom_sha256`, and an RFC 8032 Ed25519 signature
+// checked offline against local `UORTRST1` trust anchors (`authority != signer`).
+//
+// Pre-dispatch admission (`holo-gpu-admit`) requires P2 verification plus a live,
+// authority-signed 128-byte capability grant with `RX_RIGHT_EFFECT`. The world
+// declares no guest imports.
+package hologram:gpu@1.0.0;
+
+world omega-om {
+  /// Reserve `length` bytes for an input buffer (bundle, trust anchors, or capability grant) and return its offset.
+  export holo-alloc: func(length: u32) -> u32;
+
+  /// Verify a `UOR-GPU-1` bundle against local `UORTRST1` trust anchors at a minimum policy level (`P0..P3`).
+  /// Returns `offset << 32 | length` of a `prism/verdict/1` JSON document.
+  export holo-gpu-verify: func(bundle-offset: u32, bundle-length: u32, anchors-offset: u32, anchors-length: u32, min-level: u32) -> u64;
+
+  /// Verify at `P3` by decoding and executing the kernel payload bytes in the deterministic host VM (SM121 SASS or SPIR-V 1.0).
+  /// Returns `offset << 32 | length` of a `prism/verdict/1` JSON document.
+  export holo-gpu-replay: func(bundle-offset: u32, bundle-length: u32, anchors-offset: u32, anchors-length: u32) -> u64;
+
+  /// Fail-closed pre-dispatch admission: requires `P2` verification plus a live authority-signed capability grant.
+  /// Returns `offset << 32 | length` of a `prism/verdict/1` JSON document.
+  export holo-gpu-admit: func(bundle-offset: u32, bundle-length: u32, anchors-offset: u32, anchors-length: u32, grant-offset: u32, grant-length: u32) -> u64;
+}

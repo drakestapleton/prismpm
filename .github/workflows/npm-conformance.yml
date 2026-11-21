@@ -29,6 +29,8 @@ on:
       - crates/conformance/runtime/**
       - crates/conformance/src/bin/prism-conformance-shim.rs
       - crates/prismpm/src/inspect/**
+      # The Omega GPU runtime's shim and declaration.
+      - contrib/omega-gpu/**
       - Cargo.lock
       - rust-toolchain.toml
       - COMPLIANCE.md
@@ -48,6 +50,8 @@ on:
       - crates/conformance/runtime/**
       - crates/conformance/src/bin/prism-conformance-shim.rs
       - crates/prismpm/src/inspect/**
+      # The Omega GPU runtime's shim and declaration.
+      - contrib/omega-gpu/**
       - Cargo.lock
       - rust-toolchain.toml
       - COMPLIANCE.md
@@ -178,6 +182,12 @@ jobs:
           set -euo pipefail
           node sdk/npm/conformance/bin/prism-conformance.mjs run --runtime js \
             --out target/conformance/results/js.json | tee target/conformance/js.txt
+      - name: Run the suite against the Omega GPU runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          node sdk/npm/conformance/bin/prism-conformance.mjs run --runtime omega-gpu \
+            --out target/conformance/results/omega-gpu.json | tee target/conformance/omega-gpu.txt
       - name: Regenerate the matrix from those results
         run: node sdk/npm/conformance/bin/prism-conformance.mjs matrix --results target/conformance/results --write --output target/conformance/COMPLIANCE.md
       - name: Publish the matrix and the results with this run

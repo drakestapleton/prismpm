@@ -102,16 +102,17 @@ function rustInto(dir) {
 function measured() {
   const dir = mkdtempSync(join(tmpdir(), 'prism-conformance-measured-'));
   assert.equal(cli('run', '--runtime', 'js', '--out', join(dir, 'js.json')).status, 0);
+  assert.equal(cli('run', '--runtime', 'omega-gpu', '--out', join(dir, 'omega-gpu.json')).status, 0);
   rustInto(dir);
   return dir;
 }
 
-test('the committed COMPLIANCE.md is what the suite generates today, and it names all three runtimes', everyRuntime, () => {
+test('the committed COMPLIANCE.md is what the suite generates today, and it names all registered runtimes', everyRuntime, () => {
   const check = cli('matrix', '--check', '--results', measured());
   assert.equal(check.status, 0, check.stdout + check.stderr);
   const text = readFileSync(COMPLIANCE, 'utf8').replace(/\r\n/g, '\n');
   assert.match(text, /^<!-- @generated/);
-  assert.match(text, /\| Feature \| Checks \| JavaScript \| Rust \| Python \|/);
+  assert.match(text, /\| Feature \| Checks \| JavaScript \| Rust \| Python \| Omega GPU \|/);
   for (const check of allChecks(loadScenarios())) assert.ok(text.includes(`\`${check.id}\``), check.id);
 });
 
@@ -138,6 +139,7 @@ test('--results reads saved runs, and a registered runtime with no results is an
   assert.equal(rustMissing.status, 2);
   assert.match(rustMissing.stderr, /rust has a shim .* a registered runtime cannot go unmeasured/);
   rustInto(dir);
+  assert.equal(cli('run', '--runtime', 'omega-gpu', '--out', join(dir, 'omega-gpu.json')).status, 0);
   const check = cli('matrix', '--check', '--results', dir);
   assert.equal(check.status, 0, check.stderr);
   assert.equal(cli('matrix', '--write', '--check').status, 64);
@@ -148,6 +150,7 @@ test('partial results cannot reach the matrix through the CLI', () => {
   assert.equal(cli('run', '--runtime', 'js', '--only', 'load.refuse.empty', '--out', join(dir, 'js.json')).status, 0);
   // Any shim gives a partial run; the JavaScript one stands in for Rust here, so this needs no build.
   assert.equal(cli('run', '--runtime', 'rust', '--only', 'load.refuse.empty', '--out', join(dir, 'rust.json'), '--', process.execPath, JS_SHIM).status, 0);
+  assert.equal(cli('run', '--runtime', 'omega-gpu', '--only', 'load.refuse.empty', '--out', join(dir, 'omega-gpu.json')).status, 0);
   const refused = cli('matrix', '--results', dir);
   assert.equal(refused.status, 2);
   assert.match(refused.stderr, /partial run/);

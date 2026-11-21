@@ -13,214 +13,215 @@ Which Prism runtime passes which part of the runtime contract, from the results 
 
 ## Features
 
-| Feature | Checks | JavaScript | Rust | Python |
-| --- | --- | --- | --- | --- |
-| Registry logins and signing identities (`auth`) | 16 | + | - | N/A |
-| Capabilities, deny by default (`capabilities`) | 25 | + | - | N/A |
-| Dual digests (`digests`) | 18 | + | + | N/A |
-| Dispatch through the guest (`dispatch`) | 7 | + | - | N/A |
-| Typed errors (`errors`) | 8 | + | - | N/A |
-| Load a holo (`load`) | 22 | + | - | N/A |
-| Histories and replay (`replay`) | 5 | + | - | N/A |
-| Verify a holo (`verify`) | 29 | + | + | N/A |
-| The world contract (`world`) | 20 | + | - | N/A |
+| Feature | Checks | JavaScript | Rust | Python | Omega GPU |
+| --- | --- | --- | --- | --- | --- |
+| Registry logins and signing identities (`auth`) | 16 | + | - | N/A | N/A |
+| Capabilities, deny by default (`capabilities`) | 25 | + | - | N/A | N/A |
+| Dual digests (`digests`) | 18 | + | + | N/A | - |
+| Dispatch through the guest (`dispatch`) | 7 | + | - | N/A | N/A |
+| Typed errors (`errors`) | 8 | + | - | N/A | - |
+| Load a holo (`load`) | 22 | + | - | N/A | - |
+| Histories and replay (`replay`) | 5 | + | - | N/A | N/A |
+| Verify a holo (`verify`) | 29 | + | + | N/A | - |
+| The world contract (`world`) | 21 | + | - | N/A | - |
 
 ## Checks
 
 ### Registry logins and signing identities
 
-| Check | Asks | JavaScript | Rust | Python |
-| --- | --- | --- | --- | --- |
-| `auth.login.docker-config-entry` | A login with no helper configured writes the entry Docker writes. | + | - | N/A |
-| `auth.login.keeps-the-config` | A login keeps everything else in the config and replaces older spellings of the registry. | + | - | N/A |
-| `auth.login.docker-hub-by-default` | A login that names no registry is to Docker Hub, under Docker's key. | + | - | N/A |
-| `auth.login.username-with-colon` | A username with a colon is refused: Docker's entry could not be read back. | + | - | N/A |
-| `auth.login.registry-with-a-scheme` | A registry is a host name, not a URL. | + | - | N/A |
-| `auth.login.config-not-json` | A config that does not parse is refused, not overwritten. | + | - | N/A |
-| `auth.login.helper-not-installed` | A login that a configured helper cannot store fails: it never appears to work. | + | - | N/A |
-| `auth.logout.removes-every-spelling` | A logout removes the registry under every key Docker may file it by, and leaves the others. | + | - | N/A |
-| `auth.logout.nothing-there` | A logout with nothing to remove says so and is not an error. | + | - | N/A |
-| `auth.logout.names-the-ambient-token` | A logout says which variable still gives ghcr.io a token, because it cannot clear one. | + | - | N/A |
-| `auth.inspect.password` | Inspect reports a password credential's type, username and store. | + | - | N/A |
-| `auth.inspect.identity-token` | Inspect reports an identity token by its type alone. | + | - | N/A |
-| `auth.inspect.nothing-there` | Inspect of a registry with no credential is null. | + | - | N/A |
-| `auth.stores.helper-for-a-registry` | A login goes to the registry's helper before the default one, and to the config when there is neither. | + | - | N/A |
-| `auth.identities.unreadable-key` | A signing key that cannot be read is a signing error about the key. | + | - | N/A |
-| `auth.identities.empty-token` | An empty identity token is a signing error about the identity. | + | - | N/A |
+| Check | Asks | JavaScript | Rust | Python | Omega GPU |
+| --- | --- | --- | --- | --- | --- |
+| `auth.login.docker-config-entry` | A login with no helper configured writes the entry Docker writes. | + | - | N/A | N/A |
+| `auth.login.keeps-the-config` | A login keeps everything else in the config and replaces older spellings of the registry. | + | - | N/A | N/A |
+| `auth.login.docker-hub-by-default` | A login that names no registry is to Docker Hub, under Docker's key. | + | - | N/A | N/A |
+| `auth.login.username-with-colon` | A username with a colon is refused: Docker's entry could not be read back. | + | - | N/A | N/A |
+| `auth.login.registry-with-a-scheme` | A registry is a host name, not a URL. | + | - | N/A | N/A |
+| `auth.login.config-not-json` | A config that does not parse is refused, not overwritten. | + | - | N/A | N/A |
+| `auth.login.helper-not-installed` | A login that a configured helper cannot store fails: it never appears to work. | + | - | N/A | N/A |
+| `auth.logout.removes-every-spelling` | A logout removes the registry under every key Docker may file it by, and leaves the others. | + | - | N/A | N/A |
+| `auth.logout.nothing-there` | A logout with nothing to remove says so and is not an error. | + | - | N/A | N/A |
+| `auth.logout.names-the-ambient-token` | A logout says which variable still gives ghcr.io a token, because it cannot clear one. | + | - | N/A | N/A |
+| `auth.inspect.password` | Inspect reports a password credential's type, username and store. | + | - | N/A | N/A |
+| `auth.inspect.identity-token` | Inspect reports an identity token by its type alone. | + | - | N/A | N/A |
+| `auth.inspect.nothing-there` | Inspect of a registry with no credential is null. | + | - | N/A | N/A |
+| `auth.stores.helper-for-a-registry` | A login goes to the registry's helper before the default one, and to the config when there is neither. | + | - | N/A | N/A |
+| `auth.identities.unreadable-key` | A signing key that cannot be read is a signing error about the key. | + | - | N/A | N/A |
+| `auth.identities.empty-token` | An empty identity token is a signing error about the identity. | + | - | N/A | N/A |
 
 ### Capabilities, deny by default
 
-| Check | Asks | JavaScript | Rust | Python |
-| --- | --- | --- | --- | --- |
-| `capabilities.none.denies-everything` | With no capability file, every kind is denied, wildcard resources included. | + | - | N/A |
-| `capabilities.none.load-grants-nothing` | A load with no capability file names no set, and the reference holo still opens. | + | - | N/A |
-| `capabilities.empty.default-set-denies` | An empty default set grants nothing. | + | - | N/A |
-| `capabilities.empty.deny-only-denies` | A set of deny entries alone grants nothing. | + | - | N/A |
-| `capabilities.allow.exact-names` | An allow entry grants exactly what it names, for each kind. | + | - | N/A |
-| `capabilities.outbound.exact-match` | An outbound host entry matches on scheme, host and port, and ignores the path. | + | - | N/A |
-| `capabilities.outbound.wildcards` | Subdomain, port and scheme wildcards match what they say and no further. | + | - | N/A |
-| `capabilities.deny.wins-over-allow` | A deny entry wins over an allow entry, including a specific deny under a wildcard allow. | + | - | N/A |
-| `capabilities.deny.same-entry-on-both-lists` | The same entry on both lists is denied. | + | - | N/A |
-| `capabilities.set.default-applies` | A named set grants nothing until it is asked for. | + | - | N/A |
-| `capabilities.set.named-applies` | A named set applies when it is asked for. | + | - | N/A |
-| `capabilities.set.load-names-the-set` | A load under a named set reports that set. | + | - | N/A |
-| `capabilities.set.missing-is-an-error` | A set the file does not hold is an error, never an empty grant. | + | - | N/A |
-| `capabilities.set.named-without-a-file` | Naming a set with no file is an error, never an empty grant. | + | - | N/A |
-| `capabilities.invalid.unknown-member` | A misspelled member is an error, so a typo cannot widen or narrow a grant silently. | + | - | N/A |
-| `capabilities.invalid.no-default-set` | A file with no default set is an error. | + | - | N/A |
-| `capabilities.invalid.wrong-schema` | Another schema version is an error. | + | - | N/A |
-| `capabilities.invalid.malformed-entry` | A host entry with a path is an error. | + | - | N/A |
-| `capabilities.invalid.repeated-entry` | A repeated entry is an error. | + | - | N/A |
-| `capabilities.invalid.not-json` | A file that is not JSON is an error. | + | - | N/A |
-| `capabilities.import.denied-with-no-file` | A guest import is denied at load when no capability file is given. | + | - | N/A |
-| `capabilities.import.denied-under-a-full-grant` | A guest import is denied at load even when the file grants every resource, because the world lists no imports. | + | - | N/A |
-| `capabilities.kind.unknown` | Asking about a kind that does not exist is an error, not a denial. | + | - | N/A |
-| `capabilities.policy.invalid-grant` | A verify policy whose grant is malformed is an invalid policy. | + | + | N/A |
-| `capabilities.policy.within-grant` | A world that imports nothing is within every grant. | + | + | N/A |
+| Check | Asks | JavaScript | Rust | Python | Omega GPU |
+| --- | --- | --- | --- | --- | --- |
+| `capabilities.none.denies-everything` | With no capability file, every kind is denied, wildcard resources included. | + | - | N/A | N/A |
+| `capabilities.none.load-grants-nothing` | A load with no capability file names no set, and the reference holo still opens. | + | - | N/A | N/A |
+| `capabilities.empty.default-set-denies` | An empty default set grants nothing. | + | - | N/A | N/A |
+| `capabilities.empty.deny-only-denies` | A set of deny entries alone grants nothing. | + | - | N/A | N/A |
+| `capabilities.allow.exact-names` | An allow entry grants exactly what it names, for each kind. | + | - | N/A | N/A |
+| `capabilities.outbound.exact-match` | An outbound host entry matches on scheme, host and port, and ignores the path. | + | - | N/A | N/A |
+| `capabilities.outbound.wildcards` | Subdomain, port and scheme wildcards match what they say and no further. | + | - | N/A | N/A |
+| `capabilities.deny.wins-over-allow` | A deny entry wins over an allow entry, including a specific deny under a wildcard allow. | + | - | N/A | N/A |
+| `capabilities.deny.same-entry-on-both-lists` | The same entry on both lists is denied. | + | - | N/A | N/A |
+| `capabilities.set.default-applies` | A named set grants nothing until it is asked for. | + | - | N/A | N/A |
+| `capabilities.set.named-applies` | A named set applies when it is asked for. | + | - | N/A | N/A |
+| `capabilities.set.load-names-the-set` | A load under a named set reports that set. | + | - | N/A | N/A |
+| `capabilities.set.missing-is-an-error` | A set the file does not hold is an error, never an empty grant. | + | - | N/A | N/A |
+| `capabilities.set.named-without-a-file` | Naming a set with no file is an error, never an empty grant. | + | - | N/A | N/A |
+| `capabilities.invalid.unknown-member` | A misspelled member is an error, so a typo cannot widen or narrow a grant silently. | + | - | N/A | N/A |
+| `capabilities.invalid.no-default-set` | A file with no default set is an error. | + | - | N/A | N/A |
+| `capabilities.invalid.wrong-schema` | Another schema version is an error. | + | - | N/A | N/A |
+| `capabilities.invalid.malformed-entry` | A host entry with a path is an error. | + | - | N/A | N/A |
+| `capabilities.invalid.repeated-entry` | A repeated entry is an error. | + | - | N/A | N/A |
+| `capabilities.invalid.not-json` | A file that is not JSON is an error. | + | - | N/A | N/A |
+| `capabilities.import.denied-with-no-file` | A guest import is denied at load when no capability file is given. | + | - | N/A | N/A |
+| `capabilities.import.denied-under-a-full-grant` | A guest import is denied at load even when the file grants every resource, because the world lists no imports. | + | - | N/A | N/A |
+| `capabilities.kind.unknown` | Asking about a kind that does not exist is an error, not a denial. | + | - | N/A | N/A |
+| `capabilities.policy.invalid-grant` | A verify policy whose grant is malformed is an invalid policy. | + | + | N/A | N/A |
+| `capabilities.policy.within-grant` | A world that imports nothing is within every grant. | + | + | N/A | N/A |
 
 ### Dual digests
 
-| Check | Asks | JavaScript | Rust | Python |
-| --- | --- | --- | --- | --- |
-| `digests.archive.dual` | The archive is reported under both algorithms, over the whole file, as ADR-015 pins them. | + | + | N/A |
-| `digests.footer.not-the-file-hash` | The footer is the BLAKE3 of the body, reported apart from the file's BLAKE3. | + | + | N/A |
-| `digests.verdict.names-the-footer` | A verdict addresses the holo by its archive fingerprint. | + | + | N/A |
-| `digests.blob.guest` | The guest's content is reported under both algorithms, and its label is the BLAKE3. | + | + | N/A |
-| `digests.blob.model` | The model document's content is reported under both algorithms. | + | + | N/A |
-| `digests.blob.view` | The view's content is reported under both algorithms. | + | + | N/A |
-| `digests.blob.capability-set` | The capability set's content is reported under both algorithms. | + | + | N/A |
-| `digests.section.covers-its-table-bytes` | A section's digest covers exactly its table bytes, label included. | + | + | N/A |
-| `digests.damage.footer-reported` | A wrong footer is reported, and the labels stay good. | + | + | N/A |
-| `digests.damage.label-reported` | A blob that differs from its label is reported under a correct footer. | + | + | N/A |
-| `digests.pin.match` | Pins that hold under both algorithms pass. | + | + | N/A |
-| `digests.pin.sha256-mismatch` | A sha256 pin that does not hold fails the policy and withholds no level. | + | + | N/A |
-| `digests.pin.blake3-mismatch` | A blake3 pin that does not hold fails the policy. | + | + | N/A |
-| `digests.pin.one-of-two-wrong` | Two pins on one target must both hold, so checking one algorithm is not enough. | + | + | N/A |
-| `digests.pin.invalid-hex` | A pin that is not 64 lowercase hex characters is an invalid policy. | + | + | N/A |
-| `digests.pin.unknown-algorithm` | A pin under an algorithm other than sha256 and blake3 is an invalid policy. | + | + | N/A |
-| `digests.pin.unknown-target` | A pin on a part that does not exist is an invalid policy. | + | + | N/A |
-| `digests.pin.empty` | A pin that names no digest is an invalid policy, not a pass. | + | + | N/A |
+| Check | Asks | JavaScript | Rust | Python | Omega GPU |
+| --- | --- | --- | --- | --- | --- |
+| `digests.archive.dual` | The archive is reported under both algorithms, over the whole file, as ADR-015 pins them. | + | + | N/A | - |
+| `digests.footer.not-the-file-hash` | The footer is the BLAKE3 of the body, reported apart from the file's BLAKE3. | + | + | N/A | - |
+| `digests.verdict.names-the-footer` | A verdict addresses the holo by its archive fingerprint. | + | + | N/A | - |
+| `digests.blob.guest` | The guest's content is reported under both algorithms, and its label is the BLAKE3. | + | + | N/A | - |
+| `digests.blob.model` | The model document's content is reported under both algorithms. | + | + | N/A | - |
+| `digests.blob.view` | The view's content is reported under both algorithms. | + | + | N/A | - |
+| `digests.blob.capability-set` | The capability set's content is reported under both algorithms. | + | + | N/A | - |
+| `digests.section.covers-its-table-bytes` | A section's digest covers exactly its table bytes, label included. | + | + | N/A | - |
+| `digests.damage.footer-reported` | A wrong footer is reported, and the labels stay good. | + | + | N/A | - |
+| `digests.damage.label-reported` | A blob that differs from its label is reported under a correct footer. | + | + | N/A | - |
+| `digests.pin.match` | Pins that hold under both algorithms pass. | + | + | N/A | - |
+| `digests.pin.sha256-mismatch` | A sha256 pin that does not hold fails the policy and withholds no level. | + | + | N/A | - |
+| `digests.pin.blake3-mismatch` | A blake3 pin that does not hold fails the policy. | + | + | N/A | - |
+| `digests.pin.one-of-two-wrong` | Two pins on one target must both hold, so checking one algorithm is not enough. | + | + | N/A | - |
+| `digests.pin.invalid-hex` | A pin that is not 64 lowercase hex characters is an invalid policy. | + | + | N/A | - |
+| `digests.pin.unknown-algorithm` | A pin under an algorithm other than sha256 and blake3 is an invalid policy. | + | + | N/A | - |
+| `digests.pin.unknown-target` | A pin on a part that does not exist is an invalid policy. | + | + | N/A | - |
+| `digests.pin.empty` | A pin that names no digest is an invalid policy, not a pass. | + | + | N/A | - |
 
 ### Dispatch through the guest
 
-| Check | Asks | JavaScript | Rust | Python |
-| --- | --- | --- | --- | --- |
-| `dispatch.vectors.reference` | Every acceptance vector of the reference holo answers byte for byte, with the vectors given by this suite and not read from the holo. | + | - | N/A |
-| `dispatch.acceptance.reference` | The runtime's own replay of the holo's vectors passes all of them. | + | - | N/A |
-| `dispatch.fresh-instance.repeat` | The same request answers the same bytes every time, in one process. | + | - | N/A |
-| `dispatch.fresh-instance.no-state-between-requests` | A failed request changes nothing about the next one. | + | - | N/A |
-| `dispatch.limits.over-the-request-maximum` | A request above the model's maximum reaches the guest and is answered as malformed. | + | - | N/A |
-| `dispatch.limits.at-the-allocation-maximum` | A request of exactly the guest allocation maximum is dispatched. | + | - | N/A |
-| `dispatch.limits.over-the-allocation-maximum` | A request above the guest allocation maximum is refused before the guest runs. | + | - | N/A |
+| Check | Asks | JavaScript | Rust | Python | Omega GPU |
+| --- | --- | --- | --- | --- | --- |
+| `dispatch.vectors.reference` | Every acceptance vector of the reference holo answers byte for byte, with the vectors given by this suite and not read from the holo. | + | - | N/A | N/A |
+| `dispatch.acceptance.reference` | The runtime's own replay of the holo's vectors passes all of them. | + | - | N/A | N/A |
+| `dispatch.fresh-instance.repeat` | The same request answers the same bytes every time, in one process. | + | - | N/A | N/A |
+| `dispatch.fresh-instance.no-state-between-requests` | A failed request changes nothing about the next one. | + | - | N/A | N/A |
+| `dispatch.limits.over-the-request-maximum` | A request above the model's maximum reaches the guest and is answered as malformed. | + | - | N/A | N/A |
+| `dispatch.limits.at-the-allocation-maximum` | A request of exactly the guest allocation maximum is dispatched. | + | - | N/A | N/A |
+| `dispatch.limits.over-the-allocation-maximum` | A request above the guest allocation maximum is refused before the guest runs. | + | - | N/A | N/A |
 
 ### Typed errors
 
-| Check | Asks | JavaScript | Rust | Python |
-| --- | --- | --- | --- | --- |
-| `errors.verify.passed-does-not-throw` | Asking for an error on failure raises nothing when the verdict passes. | + | + | N/A |
-| `errors.verify.level-shortfall` | A level below the policy is a verification error that carries the whole verdict. | + | + | N/A |
-| `errors.verify.integrity` | A failed integrity check is a verification error naming the check. | + | + | N/A |
-| `errors.verify.pinned-digest-first` | A digest the caller pinned explains the failure before a missing level does. | + | + | N/A |
-| `errors.world.contract` | A guest that differs from its world is a world mismatch, not a generic failure. | + | + | N/A |
-| `errors.world.pin` | A world hash the caller pinned and the holo broke is a world mismatch. | + | + | N/A |
-| `errors.capability.denied-import` | A guest import nothing links is a capability denial at load, naming the import. | + | - | N/A |
-| `errors.capability.denied-resource` | A denied resource is a capability denial naming the kind, the resource and the set. | + | - | N/A |
+| Check | Asks | JavaScript | Rust | Python | Omega GPU |
+| --- | --- | --- | --- | --- | --- |
+| `errors.verify.passed-does-not-throw` | Asking for an error on failure raises nothing when the verdict passes. | + | + | N/A | - |
+| `errors.verify.level-shortfall` | A level below the policy is a verification error that carries the whole verdict. | + | + | N/A | - |
+| `errors.verify.integrity` | A failed integrity check is a verification error naming the check. | + | + | N/A | - |
+| `errors.verify.pinned-digest-first` | A digest the caller pinned explains the failure before a missing level does. | + | + | N/A | - |
+| `errors.world.contract` | A guest that differs from its world is a world mismatch, not a generic failure. | + | + | N/A | - |
+| `errors.world.pin` | A world hash the caller pinned and the holo broke is a world mismatch. | + | + | N/A | - |
+| `errors.capability.denied-import` | A guest import nothing links is a capability denial at load, naming the import. | + | - | N/A | - |
+| `errors.capability.denied-resource` | A denied resource is a capability denial naming the kind, the resource and the set. | + | - | N/A | - |
 
 ### Load a holo
 
-| Check | Asks | JavaScript | Rust | Python |
-| --- | --- | --- | --- | --- |
-| `load.reference.opens` | The reference holo opens, with its name, limits, vector count and identities verified. | + | - | N/A |
-| `load.reference-v5.opens` | The reference holo v5, a UORC archive, opens with the same name, limits and vectors as the v4 reference. | + | - | N/A |
-| `load.refuse.empty` | An empty file is refused. | + | - | N/A |
-| `load.refuse.too-short` | A file shorter than a header and a footer is refused. | + | - | N/A |
-| `load.refuse.bad-magic` | A file that does not start with HOLO is refused. | + | - | N/A |
-| `load.refuse.bad-version` | A physical version other than 4 is refused. | + | - | N/A |
-| `load.refuse.bad-flags` | Non-zero flags are refused. | + | - | N/A |
-| `load.refuse.truncated-table` | A section table that overruns the file is refused. | + | - | N/A |
-| `load.refuse.section-overrun` | A section that overruns the body is refused, even under a correct footer. | + | - | N/A |
-| `load.refuse.unknown-kind` | An unknown section kind is refused, even under a correct footer. | + | - | N/A |
-| `load.refuse.manifest-uri` | An application manifest with the wrong URI is refused. | + | - | N/A |
-| `load.refuse.label-not-a-blob` | A directory that names a blob the archive does not hold is refused. | + | - | N/A |
-| `load.refuse.undecodable-guest` | A guest that does not compile is refused. | + | - | N/A |
-| `load.refuse.undecodable-view` | A HOLOVIEW bundle that does not decode is refused. | + | - | N/A |
-| `load.refuse.undecodable-model` | A model document with no application is refused. | + | - | N/A |
-| `load.damage.footer-refused` | A wrong footer is refused: an altered holo does not open by default. | + | - | N/A |
-| `load.damage.guest-label-refused` | A guest whose bytes differ from its label is refused, even under a correct footer. | + | - | N/A |
-| `load.damage.footer-allowed` | Asked to open an altered holo, a runtime opens it and reports its identities unverified. | + | - | N/A |
-| `load.damage.guest-label-allowed` | Asked to open a holo whose guest differs from its label, a runtime opens it and reports it unverified. | + | - | N/A |
-| `load.attestation.tolerated` | An attestation section as the last row does not stop a load or change the identities. | + | - | N/A |
-| `load.attestation.not-last` | An attestation section that is not the last row is refused. | + | - | N/A |
-| `load.attestation.duplicate` | Two attestation sections are refused. | + | - | N/A |
+| Check | Asks | JavaScript | Rust | Python | Omega GPU |
+| --- | --- | --- | --- | --- | --- |
+| `load.reference.opens` | The reference holo opens, with its name, limits, vector count and identities verified. | + | - | N/A | - |
+| `load.reference-v5.opens` | The reference holo v5, a UORC archive, opens with the same name, limits and vectors as the v4 reference. | + | - | N/A | - |
+| `load.refuse.empty` | An empty file is refused. | + | - | N/A | - |
+| `load.refuse.too-short` | A file shorter than a header and a footer is refused. | + | - | N/A | - |
+| `load.refuse.bad-magic` | A file that does not start with HOLO is refused. | + | - | N/A | + |
+| `load.refuse.bad-version` | A physical version other than 4 is refused. | + | - | N/A | + |
+| `load.refuse.bad-flags` | Non-zero flags are refused. | + | - | N/A | + |
+| `load.refuse.truncated-table` | A section table that overruns the file is refused. | + | - | N/A | - |
+| `load.refuse.section-overrun` | A section that overruns the body is refused, even under a correct footer. | + | - | N/A | - |
+| `load.refuse.unknown-kind` | An unknown section kind is refused, even under a correct footer. | + | - | N/A | - |
+| `load.refuse.manifest-uri` | An application manifest with the wrong URI is refused. | + | - | N/A | - |
+| `load.refuse.label-not-a-blob` | A directory that names a blob the archive does not hold is refused. | + | - | N/A | - |
+| `load.refuse.undecodable-guest` | A guest that does not compile is refused. | + | - | N/A | - |
+| `load.refuse.undecodable-view` | A HOLOVIEW bundle that does not decode is refused. | + | - | N/A | - |
+| `load.refuse.undecodable-model` | A model document with no application is refused. | + | - | N/A | - |
+| `load.damage.footer-refused` | A wrong footer is refused: an altered holo does not open by default. | + | - | N/A | - |
+| `load.damage.guest-label-refused` | A guest whose bytes differ from its label is refused, even under a correct footer. | + | - | N/A | - |
+| `load.damage.footer-allowed` | Asked to open an altered holo, a runtime opens it and reports its identities unverified. | + | - | N/A | - |
+| `load.damage.guest-label-allowed` | Asked to open a holo whose guest differs from its label, a runtime opens it and reports it unverified. | + | - | N/A | - |
+| `load.attestation.tolerated` | An attestation section as the last row does not stop a load or change the identities. | + | - | N/A | - |
+| `load.attestation.not-last` | An attestation section that is not the last row is refused. | + | - | N/A | - |
+| `load.attestation.duplicate` | Two attestation sections are refused. | + | - | N/A | - |
 
 ### Histories and replay
 
-| Check | Asks | JavaScript | Rust | Python |
-| --- | --- | --- | --- | --- |
-| `replay.history.unchanged` | Replaying a recorded history against the same holo finds no divergence. | + | - | N/A |
-| `replay.history.divergence` | Replaying against a changed model is a determinism violation (determinism_violation). | + | - | N/A |
-| `replay.history.malformed` | A history that does not read is a replay error (replay_failed), not a divergence. | + | - | N/A |
-| `replay.recorder.round-trip` | Dispatches recorded into prism/history/1 replay unchanged, refusals included. | + | - | N/A |
-| `replay.statement.written` | A replay writes a prism/replay/v1 statement that names the guest and every history by its κ, sha256 alone (ADR-017). | + | - | N/A |
+| Check | Asks | JavaScript | Rust | Python | Omega GPU |
+| --- | --- | --- | --- | --- | --- |
+| `replay.history.unchanged` | Replaying a recorded history against the same holo finds no divergence. | + | - | N/A | N/A |
+| `replay.history.divergence` | Replaying against a changed model is a determinism violation (determinism_violation). | + | - | N/A | N/A |
+| `replay.history.malformed` | A history that does not read is a replay error (replay_failed), not a divergence. | + | - | N/A | N/A |
+| `replay.recorder.round-trip` | Dispatches recorded into prism/history/1 replay unchanged, refusals included. | + | - | N/A | N/A |
+| `replay.statement.written` | A replay writes a prism/replay/v1 statement that names the guest and every history by its κ, sha256 alone (ADR-017). | + | - | N/A | N/A |
 
 ### Verify a holo
 
-| Check | Asks | JavaScript | Rust | Python |
-| --- | --- | --- | --- | --- |
-| `verify.reference.default-policy` | The default policy fails the reference holo at P0, and names every missing statement. | + | + | N/A |
-| `verify.reference-v5.default-policy` | A holo v5 gets the same verdict as the v4 reference, named by the κ of the file (ADR-017). | + | + | N/A |
-| `verify.reference.minimum-p0` | A P0 policy accepts the reference holo. | + | + | N/A |
-| `verify.level.not-raised-by-policy` | A policy that asks for P3 does not raise the level. | + | + | N/A |
-| `verify.level.unsigned-claim-not-believed` | An unsigned statement that claims P3 never raises the level: the holo is P0, or it gets no verdict. | + | + | N/A |
-| `verify.policy.name-echoed` | The verdict names the policy it was judged against. | + | + | N/A |
-| `verify.damage.footer` | A wrong footer is a failed integrity check that withholds P1. | + | + | N/A |
-| `verify.damage.guest-label` | A guest that differs from its label fails integrity even under a correct footer. | + | + | N/A |
-| `verify.damage.label` | A forged blob label is a table the Wire codec refuses: no verdict. | + | + | N/A |
-| `verify.damage.model-document` | A damaged model document fails integrity and the document check. | + | + | N/A |
-| `verify.damage.manifest` | A damaged application manifest is not the Wire template, which the codec refuses: no verdict. | + | + | N/A |
-| `verify.damage.p0-fails-on-integrity` | Damage fails every policy: under P0 the level is P0, and the policy still fails with policy.integrity. | + | + | N/A |
-| `verify.no-verdict.empty` | An empty file gets no verdict. | + | + | N/A |
-| `verify.no-verdict.bad-magic` | A file that is not a holo gets no verdict. | + | + | N/A |
-| `verify.no-verdict.bad-version` | An unknown physical version gets no verdict. | + | + | N/A |
-| `verify.no-verdict.bad-flags` | Non-zero flags get no verdict. | + | + | N/A |
-| `verify.no-verdict.truncated-table` | A truncated table gets no verdict. | + | + | N/A |
-| `verify.no-verdict.section-overrun` | A section that overruns the body gets no verdict. | + | + | N/A |
-| `verify.no-verdict.unknown-kind` | A section kind the Wire codec does not put in that row gets no verdict. | + | + | N/A |
-| `verify.policy.unknown-level` | A minimum level that does not exist is an invalid policy, not a verdict. | + | + | N/A |
-| `verify.policy.unknown-member` | A policy member nobody defined is an invalid policy, not ignored. | + | + | N/A |
-| `verify.policy.statements-refused` | A policy cannot carry statements or claim their signature was checked: a level comes from the holo, never from an option. | + | + | N/A |
-| `verify.env.sets-minimum` | PRISM_MINIMUM_LEVEL sets the minimum when the call names none. | + | + | N/A |
-| `verify.env.call-wins` | A minimum named by the call replaces PRISM_MINIMUM_LEVEL. | + | + | N/A |
-| `verify.env.invalid` | A PRISM_MINIMUM_LEVEL that names no level is an invalid policy. | + | + | N/A |
-| `verify.session-world.documents` | Format revision 2026-10-23 admits only the @1 guest contract in its documents, so an archive naming the session world fails holo.documents and withholds P1 until a revision admits it (#629, #630). | + | + | N/A |
-| `verify.checkpoint-world.documents` | Format revision 2026-10-23 admits only the @1 guest contract in its documents, so an archive naming the checkpoint world fails holo.documents and withholds P1 until a revision admits it (HO-47, #630). | + | + | N/A |
-| `verify.checkpoint-world-v5.revision` | A holo v5 that names the checkpoint world, entered at holo_step, and packs prismpm/model-document/9 is of format revision 2026-11-18: its documents pass, and it is withheld only for the statements it does not carry (HO-49). | + | + | N/A |
-| `verify.checkpoint-world-v5.entered-at-run` | The same holo with its wasm layer entered at holo_run fails holo.documents, because the checkpoint world is entered at holo_step, and withholds P1 (HO-49). | + | + | N/A |
+| Check | Asks | JavaScript | Rust | Python | Omega GPU |
+| --- | --- | --- | --- | --- | --- |
+| `verify.reference.default-policy` | The default policy fails the reference holo at P0, and names every missing statement. | + | + | N/A | - |
+| `verify.reference-v5.default-policy` | A holo v5 gets the same verdict as the v4 reference, named by the κ of the file (ADR-017). | + | + | N/A | - |
+| `verify.reference.minimum-p0` | A P0 policy accepts the reference holo. | + | + | N/A | - |
+| `verify.level.not-raised-by-policy` | A policy that asks for P3 does not raise the level. | + | + | N/A | - |
+| `verify.level.unsigned-claim-not-believed` | An unsigned statement that claims P3 never raises the level: the holo is P0, or it gets no verdict. | + | + | N/A | - |
+| `verify.policy.name-echoed` | The verdict names the policy it was judged against. | + | + | N/A | - |
+| `verify.damage.footer` | A wrong footer is a failed integrity check that withholds P1. | + | + | N/A | - |
+| `verify.damage.guest-label` | A guest that differs from its label fails integrity even under a correct footer. | + | + | N/A | - |
+| `verify.damage.label` | A forged blob label is a table the Wire codec refuses: no verdict. | + | + | N/A | - |
+| `verify.damage.model-document` | A damaged model document fails integrity and the document check. | + | + | N/A | - |
+| `verify.damage.manifest` | A damaged application manifest is not the Wire template, which the codec refuses: no verdict. | + | + | N/A | - |
+| `verify.damage.p0-fails-on-integrity` | Damage fails every policy: under P0 the level is P0, and the policy still fails with policy.integrity. | + | + | N/A | - |
+| `verify.no-verdict.empty` | An empty file gets no verdict. | + | + | N/A | - |
+| `verify.no-verdict.bad-magic` | A file that is not a holo gets no verdict. | + | + | N/A | + |
+| `verify.no-verdict.bad-version` | An unknown physical version gets no verdict. | + | + | N/A | + |
+| `verify.no-verdict.bad-flags` | Non-zero flags get no verdict. | + | + | N/A | + |
+| `verify.no-verdict.truncated-table` | A truncated table gets no verdict. | + | + | N/A | + |
+| `verify.no-verdict.section-overrun` | A section that overruns the body gets no verdict. | + | + | N/A | + |
+| `verify.no-verdict.unknown-kind` | A section kind the Wire codec does not put in that row gets no verdict. | + | + | N/A | + |
+| `verify.policy.unknown-level` | A minimum level that does not exist is an invalid policy, not a verdict. | + | + | N/A | + |
+| `verify.policy.unknown-member` | A policy member nobody defined is an invalid policy, not ignored. | + | + | N/A | + |
+| `verify.policy.statements-refused` | A policy cannot carry statements or claim their signature was checked: a level comes from the holo, never from an option. | + | + | N/A | + |
+| `verify.env.sets-minimum` | PRISM_MINIMUM_LEVEL sets the minimum when the call names none. | + | + | N/A | - |
+| `verify.env.call-wins` | A minimum named by the call replaces PRISM_MINIMUM_LEVEL. | + | + | N/A | - |
+| `verify.env.invalid` | A PRISM_MINIMUM_LEVEL that names no level is an invalid policy. | + | + | N/A | + |
+| `verify.session-world.documents` | Format revision 2026-10-23 admits only the @1 guest contract in its documents, so an archive naming the session world fails holo.documents and withholds P1 until a revision admits it (#629, #630). | + | + | N/A | - |
+| `verify.checkpoint-world.documents` | Format revision 2026-10-23 admits only the @1 guest contract in its documents, so an archive naming the checkpoint world fails holo.documents and withholds P1 until a revision admits it (HO-47, #630). | + | + | N/A | - |
+| `verify.checkpoint-world-v5.revision` | A holo v5 that names the checkpoint world, entered at holo_step, and packs prismpm/model-document/9 is of format revision 2026-11-18: its documents pass, and it is withheld only for the statements it does not carry (HO-49). | + | + | N/A | - |
+| `verify.checkpoint-world-v5.entered-at-run` | The same holo with its wasm layer entered at holo_run fails holo.documents, because the checkpoint world is entered at holo_step, and withholds P1 (HO-49). | + | + | N/A | - |
 
 ### The world contract
 
-| Check | Asks | JavaScript | Rust | Python |
-| --- | --- | --- | --- | --- |
-| `world.reference.inspected` | Inspection names the world, its digests and its interface, and says the guest conforms. | + | + | N/A |
-| `world.reference.loaded` | A load reports the world within the grant and pure, with no capability file. | + | - | N/A |
-| `world.mismatch.extra-import` | A guest with an import the world does not declare fails the contract and withholds P1. | + | + | N/A |
-| `world.mismatch.extra-export` | A guest with an export the world does not declare fails the contract. | + | + | N/A |
-| `world.mismatch.renamed-export` | A guest missing an export the world declares fails the contract. | + | + | N/A |
-| `world.mismatch.changed-signature` | A guest export with another signature fails the contract. | + | + | N/A |
-| `world.mismatch.changed-kind` | A guest export of another kind fails the contract. | + | + | N/A |
-| `world.mismatch.inspected` | Inspection reports that a changed guest does not conform, with every fingerprint correct. | + | + | N/A |
-| `world.load.refuses-wrong-exports` | A load refuses a guest whose export names differ from the contract. | + | - | N/A |
-| `world.pin.match` | A world pin that holds passes. | + | + | N/A |
-| `world.pin.hash-mismatch` | A world hash that differs fails the policy and withholds no level. | + | + | N/A |
-| `world.pin.contract-mismatch` | A pin on another contract fails the policy. | + | + | N/A |
-| `world.pin.null` | A null pin fails the policy instead of passing silently. | + | + | N/A |
-| `world.pin.invalid` | A world pin that is not hex is an invalid policy. | + | + | N/A |
-| `world.effects.pure-passes` | A pure world passes a policy that allows no effects. | + | + | N/A |
-| `world.effects.invalid` | An effect nobody defined is an invalid policy. | + | + | N/A |
-| `world.session.loaded` | A guest of the session world hologram:guest/core-wasm@2 loads as that world: pure and within an empty grant, because it imports nothing (#629). | + | - | N/A |
-| `world.checkpoint.loaded` | A guest of the checkpoint world hologram:guest/core-wasm@3 loads as that world: pure and within an empty grant, because it imports nothing (HO-47). | + | - | N/A |
-| `world.checkpoint-v5.loaded` | A holo v5 of format revision 2026-11-18 whose wasm layer is the checkpoint world, entered at holo_step, with a binary application document, loads as that world (HO-49). | + | - | N/A |
-| `world.checkpoint-v5.inspected` | Inspection names format revision 2026-11-18 for a holo v5 of the checkpoint world, and the world's package, file, digests and five exports, and says the guest conforms (HO-49). | + | + | N/A |
+| Check | Asks | JavaScript | Rust | Python | Omega GPU |
+| --- | --- | --- | --- | --- | --- |
+| `world.reference.inspected` | Inspection names the world, its digests and its interface, and says the guest conforms. | + | + | N/A | - |
+| `world.reference.loaded` | A load reports the world within the grant and pure, with no capability file. | + | - | N/A | - |
+| `world.mismatch.extra-import` | A guest with an import the world does not declare fails the contract and withholds P1. | + | + | N/A | - |
+| `world.mismatch.extra-export` | A guest with an export the world does not declare fails the contract. | + | + | N/A | - |
+| `world.mismatch.renamed-export` | A guest missing an export the world declares fails the contract. | + | + | N/A | - |
+| `world.mismatch.changed-signature` | A guest export with another signature fails the contract. | + | + | N/A | - |
+| `world.mismatch.changed-kind` | A guest export of another kind fails the contract. | + | + | N/A | - |
+| `world.mismatch.inspected` | Inspection reports that a changed guest does not conform, with every fingerprint correct. | + | + | N/A | - |
+| `world.load.refuses-wrong-exports` | A load refuses a guest whose export names differ from the contract. | + | - | N/A | - |
+| `world.pin.match` | A world pin that holds passes. | + | + | N/A | - |
+| `world.pin.hash-mismatch` | A world hash that differs fails the policy and withholds no level. | + | + | N/A | - |
+| `world.pin.contract-mismatch` | A pin on another contract fails the policy. | + | + | N/A | - |
+| `world.pin.null` | A null pin fails the policy instead of passing silently. | + | + | N/A | - |
+| `world.pin.invalid` | A world pin that is not hex is an invalid policy. | + | + | N/A | + |
+| `world.effects.pure-passes` | A pure world passes a policy that allows no effects. | + | + | N/A | - |
+| `world.effects.invalid` | An effect nobody defined is an invalid policy. | + | + | N/A | + |
+| `world.session.loaded` | A guest of the session world hologram:guest/core-wasm@2 loads as that world: pure and within an empty grant, because it imports nothing (#629). | + | - | N/A | - |
+| `world.checkpoint.loaded` | A guest of the checkpoint world hologram:guest/core-wasm@3 loads as that world: pure and within an empty grant, because it imports nothing (HO-47). | + | - | N/A | - |
+| `world.checkpoint-v5.loaded` | A holo v5 of format revision 2026-11-18 whose wasm layer is the checkpoint world, entered at holo_step, with a binary application document, loads as that world (HO-49). | + | - | N/A | - |
+| `world.checkpoint-v5.inspected` | Inspection names format revision 2026-11-18 for a holo v5 of the checkpoint world, and the world's package, file, digests and five exports, and says the guest conforms (HO-49). | + | + | N/A | - |
+| `world.gpu-omega.pin-contract-mismatch` | A policy pinning the Omega GPU world hologram:gpu/omega-om@1 refuses a Core-Wasm @1 archive. | + | + | N/A | - |
 
 ## Expected failures
 
@@ -306,3 +307,86 @@ Which Prism runtime passes which part of the runtime contract, from the results 
 | Rust | `world.session.loaded` | The Rust runtime has no load operation yet (#298). |
 | Rust | `world.checkpoint.loaded` | The Rust runtime has no load operation yet (#298). |
 | Rust | `world.checkpoint-v5.loaded` | The Rust runtime has no load operation yet (#298). |
+| Omega GPU | `digests.archive.dual` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `digests.footer.not-the-file-hash` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `digests.verdict.names-the-footer` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `digests.blob.guest` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `digests.blob.model` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `digests.blob.view` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `digests.blob.capability-set` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `digests.section.covers-its-table-bytes` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `digests.damage.footer-reported` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `digests.damage.label-reported` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `digests.pin.match` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `digests.pin.sha256-mismatch` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `digests.pin.blake3-mismatch` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `digests.pin.one-of-two-wrong` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `digests.pin.invalid-hex` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `digests.pin.unknown-algorithm` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `digests.pin.unknown-target` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `digests.pin.empty` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `errors.verify.passed-does-not-throw` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `errors.verify.level-shortfall` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `errors.verify.integrity` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `errors.verify.pinned-digest-first` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `errors.world.contract` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `errors.world.pin` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `errors.capability.denied-import` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `errors.capability.denied-resource` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `load.reference.opens` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `load.reference-v5.opens` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `load.refuse.empty` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `load.refuse.too-short` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `load.refuse.truncated-table` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `load.refuse.section-overrun` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `load.refuse.unknown-kind` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `load.refuse.manifest-uri` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `load.refuse.label-not-a-blob` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `load.refuse.undecodable-guest` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `load.refuse.undecodable-view` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `load.refuse.undecodable-model` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `load.damage.footer-refused` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `load.damage.guest-label-refused` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `load.damage.footer-allowed` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `load.damage.guest-label-allowed` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `load.attestation.tolerated` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `load.attestation.not-last` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `load.attestation.duplicate` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `verify.reference.default-policy` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `verify.reference-v5.default-policy` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `verify.reference.minimum-p0` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `verify.level.not-raised-by-policy` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `verify.level.unsigned-claim-not-believed` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `verify.policy.name-echoed` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `verify.damage.footer` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `verify.damage.guest-label` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `verify.damage.label` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `verify.damage.model-document` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `verify.damage.manifest` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `verify.damage.p0-fails-on-integrity` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `verify.no-verdict.empty` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `verify.env.sets-minimum` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `verify.env.call-wins` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `verify.session-world.documents` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `verify.checkpoint-world.documents` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `verify.checkpoint-world-v5.revision` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `verify.checkpoint-world-v5.entered-at-run` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `world.reference.inspected` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `world.reference.loaded` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `world.mismatch.extra-import` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `world.mismatch.extra-export` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `world.mismatch.renamed-export` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `world.mismatch.changed-signature` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `world.mismatch.changed-kind` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `world.mismatch.inspected` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `world.load.refuses-wrong-exports` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `world.pin.match` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `world.pin.hash-mismatch` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `world.pin.contract-mismatch` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `world.pin.null` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `world.effects.pure-passes` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `world.session.loaded` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `world.checkpoint.loaded` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `world.checkpoint-v5.loaded` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `world.checkpoint-v5.inspected` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
+| Omega GPU | `world.gpu-omega.pin-contract-mismatch` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
