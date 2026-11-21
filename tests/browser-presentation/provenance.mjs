@@ -28,6 +28,8 @@ export function provenanceProfile(name) {
       {kind: 'map', path: 'maps/' + path + '.map.json'},
       {kind: 'coverage', path: 'coverage/' + path + '.coverage.json'},
       {kind: 'lexicon-closure', path: 'lexicons/' + name + '.closure.json'},
+      // LexLean 0.4.3, language 1.2: each module's declaration identities (lexlean/declarations/1).
+      {kind: 'declarations', path: 'declarations/' + path + '.json'},
     ];
   }).sort((a, b) => Buffer.compare(Buffer.from(a.kind), Buffer.from(b.kind))
     || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)))
