@@ -94,6 +94,7 @@
   "src/journey/model-guest.mjs",
   "src/journey/model-holo.mjs",
   "src/journey/model-prove.mjs",
+  "src/journey/model-site.mjs",
   "src/journey/project.mjs",
   "src/journey/proof-store.mjs",
   "src/journey/register.mjs",

@@ -300,14 +300,22 @@ async function buildModelApp(dir, session, { log, env, snapshot, gaps, kernel, w
   }
   const seconds = Math.round((Date.now() - started) / 100) / 10;
   const ok = app.identities.verified === true && acceptance.failed.length === 0;
+  // The folder the app is published from: the holo, what it is, and the model's source beside it, as a rule app's page carries it.
+  let site = null;
+  if (ok) {
+    const { writeHoloSite } = await import('./model-site.mjs');
+    const { modelFiles } = await import('./model-files.mjs');
+    site = writeHoloSite(join(dir, '.prism', 'site'), built.bytes, { name: built.name, semanticId: `sha256:${built.semanticId}`, model: modelFiles(dir) }).directory;
+  }
   session.status.holo = ok ? path : null;
-  session.status.built = ok ? { source: sourceDigest(dir), path, address: built.label, semanticId: `sha256:${built.semanticId}`, at: new Date().toISOString(), seconds, passed: acceptance.passed, total: acceptance.total, builder: 'evaluator-guest' } : null;
+  session.status.built = ok ? { source: sourceDigest(dir), path, site, address: built.label, semanticId: `sha256:${built.semanticId}`, at: new Date().toISOString(), seconds, passed: acceptance.passed, total: acceptance.total, builder: 'evaluator-guest' } : null;
   return {
     ok,
     stage: 'build',
     where: 'kernel',
     seconds,
     holo: path,
+    site,
     address: built.label,
     semanticId: `sha256:${built.semanticId}`,
     bytes: built.bytes.length,
