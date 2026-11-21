@@ -150,7 +150,7 @@ const CHILDREN = ['arguments', 'fields', 'branches'];
 const SINGLE = ['head', 'tail', 'value', 'condition', 'then_value', 'else_value', 'scrutinee', 'left', 'right', 'body'];
 
 /**
- * Read a snapshot as a program. Returns `{ semanticId, application, entry, uncovered, dispatch, acceptance }`.
+ * Read a snapshot as a program. Returns `{ semanticId, application, entry, uncovered, dispatch, acceptance, reach }`.
  * `application` is the model's `TextApplication` record as plain values. `uncovered` lists, by name, what the
  * entry reaches that is not run here; `dispatch` and `acceptance` refuse (`eval.uncovered`) while it is not empty.
  * `primitives` replaces the table above: a test plants a defect with it.
@@ -320,8 +320,13 @@ export function modelProgram(snapshot, { primitives = PRIMITIVES, stepLimit = ST
   const application = { ...record, libraryRoots: toArray(record.libraryRoots), acceptanceVectors: toArray(record.acceptanceVectors).map((v) => ({ request: v.fields.request, response: v.fields.response })), view: record.view?.fields ?? null };
 
   // `entryRoot` is the entry's Lean name: a module's Lean name, a dot, the definition's name.
-  const entryModule = snapshot.modules.filter((m) => application.entryRoot.startsWith(`${m.lean_module}.`)).sort((a, b) => b.lean_module.length - a.lean_module.length)[0];
-  const entry = entryModule ? `${entryModule.name}::${application.entryRoot.slice(entryModule.lean_module.length + 1)}` : null;
+  // A project's Lean prefix is its own to choose, and a starter's record may state another than its lock does, so
+  // when no module's Lean name leads the entry, the one module whose own name ends it is taken.
+  const longest = (found, size) => found.sort((a, b) => size(b) - size(a))[0];
+  const byLean = longest(snapshot.modules.filter((m) => application.entryRoot.startsWith(`${m.lean_module}.`)), (m) => m.lean_module.length);
+  const bySource = snapshot.modules.filter((m) => { const at = application.entryRoot.lastIndexOf(`.${m.name}.`); return at >= 0 && declared.has(`${m.name}::${application.entryRoot.slice(at + m.name.length + 2)}`); });
+  const entry = byLean ? `${byLean.name}::${application.entryRoot.slice(byLean.lean_module.length + 1)}`
+    : bySource.length === 1 ? `${bySource[0].name}::${application.entryRoot.slice(application.entryRoot.lastIndexOf(`.${bySource[0].name}.`) + bySource[0].name.length + 2)}` : null;
   const target = entry ? declared.get(entry) : null;
   if (!target?.d || target.d.kind !== 'definition' || target.d.parameters.length !== 1) refuse('eval.application', `the entry ${application.entryRoot} is not a definition of one argument in this model`);
   const uncovered = uncoveredFrom(entry);
@@ -351,5 +356,6 @@ export function modelProgram(snapshot, { primitives = PRIMITIVES, stepLimit = ST
     return { total: application.acceptanceVectors.length, passed: application.acceptanceVectors.length - failed.length, failed };
   }
 
-  return { semanticId: snapshot.semantic_id ?? null, application, entry, uncovered, dispatch, acceptance };
+  // `reach` is how this program reads names, for the one other reader of a snapshot's terms: the guest's encoder (model-guest.mjs).
+  return { semanticId: snapshot.semantic_id ?? null, application, entry, uncovered, dispatch, acceptance, reach: { declared, resolve, constructorName } };
 }
