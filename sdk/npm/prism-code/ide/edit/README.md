@@ -144,7 +144,23 @@ edit/ide/?registry=https://<registry>&namespace=<namespace>&model=blake3:<64 hex
 - `readModelTar` in `model-tar.mjs` reads the archive strictly: plain files of text under one folder, every header's checksum, no path that leaves the folder. Anything else is refused whole.
 - A line under the strip says which label was opened, how many bytes, and from where. A model opened this way is compared with no app.
 
-Tried by hand in the same browser, against a stand-in on this machine that answers at the registry's address shape. **kappa-registry itself was not run**: it is a Rust server and was not built here.
+Tried against kappa-registry itself (2026-11-21): its server built from `main` at `bd231d0` and run on this machine, with nothing configured but its address and its store.
+
+| Step | Result |
+|---|---|
+| Push two model archives with a plain `PUT` under their BLAKE3 labels | 201 each; `Docker-Content-Digest` is the label, `X-Kappa-Axis` is `blake3` |
+| Push other bytes under a label that is not theirs | 400: the registry checks before it stores |
+| The client fetches both back, from Node | the same bytes, the same labels, the same files |
+| A request that names the Pages site as its origin | answered with that origin allowed |
+| The workbench, served from this machine, opens one by label | 5 of 5 proved; "This is the model blake3:42a411b0…: 40448 bytes fetched from …, which derive to that label." |
+| A label the registry does not have | "the registry has no blob … under acme/models" |
+
+Two things that trial found:
+
+- **The published page cannot reach a registry on the reader's own machine.** Opened from `https://uor-foundation.github.io`, the browser refused the request to `http://127.0.0.1` before sending it; the registry's log shows nothing arrived. The page said the registry did not answer. A registry the published page can use must be reached by https.
+- **The registry refuses a preflight.** `OPTIONS` on a blob's address answers 405, though its own CORS code means to answer 204. The client's request is a plain `GET` and needs none, so reading works. A browser that sends one first (a request with a credential, or to a private network) would be refused.
+
+The rest was tried by hand in the same browser against a stand-in on this machine that answers at the registry's address shape, because the cases need a registry that lies.
 
 | Step | Shown |
 |---|---|
@@ -161,6 +177,7 @@ Limits of the workbench page:
 
 - Opening by label is read only: the page pushes nothing to a registry. A model gets there by `curl`, as the registry's README shows, or by a tool that can push.
 - Only a registry that needs no sign-in for reading can be used: the client sends no credential.
+- The published page reaches only a registry served by https. No such registry was tried: the one run here was on this machine.
 - A draft is trusted no further than the origin that serves the page: another page of the same origin can write to the same store. It is the reader's convenience, not evidence of anything.
 - Texts a discarded draft named stay in the browser until the site's data is cleared. Nothing names them.
 - Where the browser has no private file system for the page (a private window), nothing is kept, and the line says a reload loses the changes. That case was not tried by hand.

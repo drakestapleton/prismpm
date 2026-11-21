@@ -1,6 +1,6 @@
 # Prism IDE, phase 2: open any Prism app to audit it and edit it, in any browser
 
-Status: proposed, and partly built. Since this was written, `main` has gained the audit page, the edit pages, the model in the VS Code workbench, LexLean colouring, a published model and the check that a model is the one its app runs, all live at https://uor-foundation.github.io/prismpm/ (`audit/`, `edit/`, `edit/ide/`). The table below was read before that work; the rows the terminal phase depends on are corrected, the rest are as written. Phase 2f is built: the terminal is in the plain edit page and in the workbench's terminal panel. Phases 2d and 2e are not built.
+Status: proposed, and partly built. Since this was written, `main` has gained the audit page, the edit pages, the model in the VS Code workbench, LexLean colouring, a published model and the check that a model is the one its app runs, all live at https://uor-foundation.github.io/prismpm/ (`audit/`, `edit/`, `edit/ide/`). The table below was read before that work; the rows the terminal phase depends on are corrected, the rest are as written. Phase 2f is built: the terminal is in the plain edit page and in the workbench's terminal panel. Phase 2d is built but for one part awaiting review (below). Phase 2e is not built.
 
 ## Why
 
@@ -81,6 +81,13 @@ Gates: a second visit to the audit view of an app makes no network request. One 
 
 Budgets: warm audit view within 1 s with the network off.
 
+Built (2026-11-21), with what is not:
+
+- Offline, by content. The site lists every file by its BLAKE3 label (`offline.json`), and a service worker serves each only as the bytes its label names. Live.
+- The kappa-registry client, read only, and a model opened by its label (`edit/ide/?registry=…&namespace=…&model=blake3:…`). Live. The gate was met against kappa-registry itself, built from its `main` and run on a development machine: a model pushed under its `blake3:` label was fetched, verified and opened by the page, served from that machine. The published page could not reach it: a browser does not let an https page read from `http://127.0.0.1`. No https registry was tried. `ide/edit/README.md` has the table.
+- `kappa-opfs` under BLAKE3 labels, with the SHA-256 label as a checked field: written, in review, not merged. Its keys are still derived with SHA-256, because the reuse rules are shared with Node and a holo's own label is SHA-256. prism-code's BLAKE3 is plain JavaScript and measured 46 MB/s on a development machine; what that costs a returning visit in a browser is not measured.
+- Not built: installing an extension from Open VSX by content label. The terminal's kept output is in its own store, not `kappa-opfs`.
+
 ### Phase 2e: the entry point
 
 Work: **Open in IDE** in the frame, shown when the app publishes the three things above. `prism-code` writes them at build. Conformance ids, a scenario and a package allowance for what the build now writes.
@@ -88,6 +95,15 @@ Work: **Open in IDE** in the frame, shown when the app publishes the three thing
 Gates: an app built from the template shows the control and opens its own audit view. An app that does not publish its sources shows no control. The frame's existing tests pass.
 
 Budgets: the frame grows by under 2 KiB. An app's page pays nothing until the control is used.
+
+Not built (2026-11-21). What was found on reading `UOR-Foundation/template` at `3fa228d`:
+
+- No build publishes a holo app's model. The template's Pages workflow copies the holo and renders `spec.html`; it writes no `model/`, no `model/project.json` and no `app.holo.json`. prism-code writes a model beside a rule app's page only.
+- The prism-code the template vendors for its page is 0.2.0, which has neither `model-files.mjs` nor the holo app record.
+- The frame is published on every push to the template's `main` and every app loads it on its next visit. A control added there reaches every Prism app at once.
+- The frame already has a `status` slot an app's page fills. A link put there by the app's own page would need no change to the frame; the proposal asks for a control in the frame itself.
+
+So this phase needs three changes in order: prism-code writes the model and the record for a holo app; the template's build calls it and publishes them; the frame, or the page, shows the control when they are there. The first is in this repository. The other two are the template's, and are items 2 and 3 of "Ask first".
 
 ### Phase 2f: the terminal
 
