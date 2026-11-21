@@ -188,6 +188,11 @@ jobs:
           set -euo pipefail
           node sdk/npm/conformance/bin/prism-conformance.mjs run --runtime omega-gpu \
             --out target/conformance/results/omega-gpu.json | tee target/conformance/omega-gpu.txt
+      - name: Run Omega GPU bundle conformance fixtures (HO-51)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test "contrib/omega-gpu/test/*.test.mjs"
       - name: Regenerate the matrix from those results
         run: node sdk/npm/conformance/bin/prism-conformance.mjs matrix --results target/conformance/results --write --output target/conformance/COMPLIANCE.md
       - name: Publish the matrix and the results with this run

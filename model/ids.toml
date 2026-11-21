@@ -1631,3 +1631,9 @@ id = "LP-11"
 suite = "lean-prover"
 level = "build"
 statement = "Blob collection keeps exactly the blobs a pinned manifest names."
+
+[[id]]
+id = "HO-51"
+suite = "conformance"
+level = "build"
+statement = "The experimental Omega GPU world hologram:gpu/omega-om@1 (sdk/npm/spec/worlds/gpu-omega.wit) and its prism/conformance-shim/1 runtime shim (contrib/omega-gpu/) enforce UOR-GPU-1 dual digests, SM121 896B QMD v05.00 SKEDCHECK05 and SPIR-V 1.0 payload framing, caller-supplied world/digest pins, and schema-valid prism/verdict/1 verdicts."

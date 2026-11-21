@@ -96,10 +96,10 @@ Which Prism runtime passes which part of the runtime contract, from the results 
 | `digests.pin.sha256-mismatch` | A sha256 pin that does not hold fails the policy and withholds no level. | + | + | N/A | - |
 | `digests.pin.blake3-mismatch` | A blake3 pin that does not hold fails the policy. | + | + | N/A | - |
 | `digests.pin.one-of-two-wrong` | Two pins on one target must both hold, so checking one algorithm is not enough. | + | + | N/A | - |
-| `digests.pin.invalid-hex` | A pin that is not 64 lowercase hex characters is an invalid policy. | + | + | N/A | - |
-| `digests.pin.unknown-algorithm` | A pin under an algorithm other than sha256 and blake3 is an invalid policy. | + | + | N/A | - |
-| `digests.pin.unknown-target` | A pin on a part that does not exist is an invalid policy. | + | + | N/A | - |
-| `digests.pin.empty` | A pin that names no digest is an invalid policy, not a pass. | + | + | N/A | - |
+| `digests.pin.invalid-hex` | A pin that is not 64 lowercase hex characters is an invalid policy. | + | + | N/A | + |
+| `digests.pin.unknown-algorithm` | A pin under an algorithm other than sha256 and blake3 is an invalid policy. | + | + | N/A | + |
+| `digests.pin.unknown-target` | A pin on a part that does not exist is an invalid policy. | + | + | N/A | + |
+| `digests.pin.empty` | A pin that names no digest is an invalid policy, not a pass. | + | + | N/A | + |
 
 ### Dispatch through the guest
 
@@ -321,10 +321,6 @@ Which Prism runtime passes which part of the runtime contract, from the results 
 | Omega GPU | `digests.pin.sha256-mismatch` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
 | Omega GPU | `digests.pin.blake3-mismatch` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
 | Omega GPU | `digests.pin.one-of-two-wrong` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
-| Omega GPU | `digests.pin.invalid-hex` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
-| Omega GPU | `digests.pin.unknown-algorithm` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
-| Omega GPU | `digests.pin.unknown-target` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
-| Omega GPU | `digests.pin.empty` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
 | Omega GPU | `errors.verify.passed-does-not-throw` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
 | Omega GPU | `errors.verify.level-shortfall` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
 | Omega GPU | `errors.verify.integrity` | Targets Core-Wasm .holo v4/v5 guest archives; omega-gpu targets hologram:gpu/omega-om@1 (UOR-GPU-1) bundles (docs/proposals/gpu-omega-world.md). |
