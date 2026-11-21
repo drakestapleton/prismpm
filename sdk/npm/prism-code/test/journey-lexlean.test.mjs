@@ -3,6 +3,7 @@
 // as WebAssembly every step is refused and names what is missing, and nothing is sent. The semantic snapshot here
 // comes from the journey's `snapshot` option, a stand-in for LexLean that answers in this process.
 import { test } from 'node:test';
+import { templateFixture } from './support/template-fixture.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -21,7 +22,7 @@ process.env.PRISM_HOME = mkdtempSync(join(tmpdir(), 'prism-home-'));
 process.env.PRISM_LEXLEAN_FETCH = '0';
 process.env.PRISM_KERNEL_DIR = fileURLToPath(new URL('./fixtures/kernel/', import.meta.url));
 
-const STARTERS = fileURLToPath(new URL('../templates/starters/', import.meta.url));
+const STARTERS = fileURLToPath(new URL('./fixtures/starters/', import.meta.url));
 // The env a step is given is the whole environment it sees: it names this test's home, never the user's.
 const HOME = { PRISM_HOME: process.env.PRISM_HOME };
 // The old opt-in to the hosted verifier: it is ignored now.
@@ -178,32 +179,36 @@ test('a snapshot that is not a rule app\'s is refused by name, never guessed at'
   assert.throws(() => ruleTable(lambda), { code: 'rule-table.term' });
 });
 
-test('the server offers the LexLean path and no other: four tools named as Docker names them, no spec, and what runs without Docker said plainly', async () => {
+test('the server offers the LexLean path and no other: six tools named as Docker names them, one canonical template, no starters, and what runs without Docker said plainly', async () => {
   assert.deepEqual(TOOLS.map((t) => t.name), ['prism_init', 'prism_build', 'prism_run', 'prism_inspect', 'prism_push', 'prism_pull']);
   assert.deepEqual(TOOLS.find((t) => t.name === 'prism_run').inputSchema.required, ['request']);
-  assert.ok(!/spec\.json|prism\/spec|prism_spec|prism_answer/.test(JSON.stringify(TOOLS) + INSTRUCTIONS));
+  assert.deepEqual(TOOLS.find((t) => t.name === 'prism_init').inputSchema.properties, {}, 'prism_init takes no starter');
+  assert.ok(!/spec\.json|prism\/spec|prism_spec|prism_answer|rule-app|decision-app|stateful-app/.test(JSON.stringify(TOOLS) + INSTRUCTIONS));
   for (const name of ['prism_init', 'prism_build', 'prism_run', 'prism_inspect']) assert.ok(INSTRUCTIONS.includes(name), name);
   assert.match(INSTRUCTIONS, /No step needs Docker, an image or a server\. LexLean runs as WebAssembly/);
   assert.ok(!/hosted/i.test(JSON.stringify(TOOLS) + INSTRUCTIONS));
   assert.match(INSTRUCTIONS, /Never set PRISM_CODE_TIER yourself/);
   const sent = [];
-  const server = createServer({ cwd: mkdtempSync(join(tmpdir(), 'prism-mcp-')), send: (m) => sent.push(m) });
+  const { template, fetch } = templateFixture();
+  const cwd = mkdtempSync(join(tmpdir(), 'prism-mcp-'));
+  const server = createServer({ cwd, send: (m) => sent.push(m), template, fetch });
   const call = async (name, args = {}) => {
     await server.handle({ jsonrpc: '2.0', id: sent.length + 1, method: 'tools/call', params: { name, arguments: args } });
     return sent.at(-1).result;
   };
-  const list = (await call('prism_init')).structuredContent;
-  assert.deepEqual(list.starters.map((s) => s.starter), ['rule-app', 'decision-app', 'stateful-app']);
-  assert.match(list.next, /call prism_init again/);
-  assert.match(list.nextSteps[0], /Phase 3/);
   assert.equal((await call('prism_build')).structuredContent.state, 'blocked');
   assert.match((await call('prism_run')).content[0].text, /prism_run needs `request`/);
-  assert.match((await call('prism_init', { spec: {} })).content[0].text, /does not take `spec`/);
-  const started = (await call('prism_init', { starter: 'rule-app' })).structuredContent;
-  assert.equal(started.model, 'src/App.lex.tex');
+  assert.match((await call('prism_init', { starter: 'rule-app' })).content[0].text, /does not take `starter`/);
+  const started = (await call('prism_init')).structuredContent;
+  assert.equal(started.ok, true);
+  assert.equal(started.template, `UOR-Foundation/template at ${'f'.repeat(40)}`);
+  assert.equal(started.model, 'app/src/');
   assert.match(started.next, /then call prism_build\.$/);
+  assert.match(started.nextSteps[0], /Phase 3/);
+  for (const path of Object.keys(template.files)) assert.ok(existsSync(join(cwd, path)), path);
   const inspected = (await call('prism_inspect')).structuredContent;
-  assert.deepEqual([inspected.starter, inspected.files, inspected.audit], ['rule-app', ['src/App.lex.tex', 'src/Foundation/Bytes.lex.tex', 'src/Foundation/View/Text/V1/Model.lex.tex'], null]);
+  assert.deepEqual([inspected.template?.commit, inspected.project, inspected.audit], ['f'.repeat(40), join(cwd, 'app'), null]);
+  assert.ok(inspected.files.includes('src/TextRequest.lex.tex'), "the template's model is the app's model");
   // The six tools are the only ones: an older name is not answered.
   for (const name of ['prism_start', 'prism_check', 'prism_prove', 'prism_verify', 'prism_try', 'prism_status']) {
     await server.handle({ jsonrpc: '2.0', id: sent.length + 1, method: 'tools/call', params: { name, arguments: {} } });

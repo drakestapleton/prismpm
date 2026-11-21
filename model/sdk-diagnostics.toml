@@ -1057,6 +1057,21 @@ capability = "DK-41"
 statement = "prism.system was given options that are not a plain object, an option it does not have, or a time that is not a Date, an ISO 8601 time or milliseconds."
 
 [[error]]
+code = "template.altered"
+capability = "DK-50"
+statement = "A file of the canonical template, fetched from its pinned commit, does not have its pinned SHA-256, so nothing was written."
+
+[[error]]
+code = "template.exists"
+capability = "DK-50"
+statement = "The project already holds a file of the canonical template with other bytes, so the app was not started there and nothing was written."
+
+[[error]]
+code = "template.unavailable"
+capability = "DK-50"
+statement = "A file of the canonical template could not be fetched from its pinned commit, so nothing was written; it is fetched once per app."
+
+[[error]]
 code = "tier.project"
 capability = "DK-41"
 statement = "The LexLean project of a build tier cannot be found: --project is outside the root or has no project file, or more than one project is there."

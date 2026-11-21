@@ -10,6 +10,7 @@ import { appDir, readSession, startApp, writeSession } from '../src/journey/proj
 import { TOOLS, createServer } from '../src/journey/mcp.mjs';
 import { BUNDLE_SCHEMA, bundleOf, parseReference, pullBundle, pushBundle } from '../src/journey/app-bundle.mjs';
 import { kappa } from '../src/blake3.mjs';
+import { templateFixture } from './support/template-fixture.mjs';
 
 process.env.PRISM_HOME = mkdtempSync(join(tmpdir(), 'prism-home-'));
 process.env.PRISM_LEXLEAN_FETCH = '0';
@@ -23,9 +24,9 @@ const ruleApp = () => {
   writeSession(dir, session);
   return { dir, session };
 };
-const serverIn = (cwd) => {
+const serverIn = (cwd, options = {}) => {
   const sent = [];
-  const server = createServer({ cwd, send: (m) => sent.push(m) });
+  const server = createServer({ cwd, send: (m) => sent.push(m), ...options });
   const call = async (name, args = {}) => {
     await server.handle({ jsonrpc: '2.0', id: sent.length + 1, method: 'tools/call', params: { name, arguments: args } });
     return sent.at(-1);
@@ -112,9 +113,10 @@ test('references: a κ-label, dir://<folder>#<κ> or https://<site>#<κ>; https 
 
 test('prism_push publishes only a proved app', async () => {
   const cwd = fresh('push');
-  const { call } = serverIn(cwd);
+  const { template, fetch } = templateFixture();
+  const { call } = serverIn(cwd, { template, fetch });
   assert.equal((await call('prism_push')).result.structuredContent.state, 'blocked');
-  await call('prism_init', { starter: 'rule-app' });
+  assert.equal((await call('prism_init')).result.structuredContent.ok, true);
   const pushed = (await call('prism_push', { reference: `dir://${fresh('store')}` })).result.structuredContent;
   assert.equal(pushed.ok, false);
   assert.equal(pushed.code, 'bundle.unproved');

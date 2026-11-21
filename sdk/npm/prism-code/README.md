@@ -73,27 +73,27 @@ Claude Desktop included: `prism-code mcp` on stdio.
 
 With the `prism` server connected, ask the agent for a Prism app in one
 sentence, such as "build me a Prism app for loan approval". An app's one source
-of truth is its LexLean model under `prism/src/`, which the agent writes with
+of truth is its LexLean model under `app/src/`, which the agent writes with
 you. Its machine-readable form is the JSON LexLean exports for the model,
 `lexlean/semantic-snapshot/2`, named by its `semantic_id`.
 
-`prism_init` lists the starters, and starts the app from the one that fits.
-Each is a LexLean module named by its SHA-256 in
-`templates/starters/index.json`, copied only when its bytes match:
-
-| Starter | Shape | Proved by |
-| --- | --- | --- |
-| `rule-app` | one answer from one request, each condition a field against a value | Lean's kernel in this process, from the model's semantic snapshot; the app is the verified rule judge with the model's numbers, served as a static page |
-| `decision-app` | one answer from one request, with its own judge and theorems | Lean's kernel in this process, from the kernel declarations LexLean writes; built into a holo through the SDK image |
-| `stateful-app` | state kept between steps, with actions and invariants | Lean's kernel in this process, as a decision app; built into a holo through the SDK image |
+`prism_init` starts every app, simple or complex, from one canonical template,
+[`UOR-Foundation/template`](https://github.com/UOR-Foundation/template): a whole
+Prism project, with its LexLean model under `app/`, the workflows that build
+the app on GitHub Actions and serve it on GitHub Pages, its conformance and its
+locks. `templates/canonical.json` pins it at one commit, every file by its
+SHA-256; each file is fetched from that commit and written only when its bytes
+match, and never over a file that holds other bytes. The app's LexLean project
+is then aligned to the LexLean this prism-code runs, so it checks and proves
+here from the first call. There are no starters to choose from.
 
 The agent edits the model, and `prism_build` with `check: true` returns every
-diagnostic at the line of `prism/src/` it anchors to. The agent shows you the
+diagnostic at the line of `app/src/` it anchors to. The agent shows you the
 guarantees the model states before anything is proved. `prism_build` proves
-and builds it, and `prism_run` answers from the built app. A rule app's
-guarantees are first tried for a counterexample among the values its
-conditions tell apart, then judged by Lean's kernel. Guarantees are proved;
-the reading of requests and the examples are tested.
+every theorem with Lean's kernel in this process; the app itself is then built
+from the proved model by the template's own `build.yml` on GitHub Actions when
+the project is pushed, and served by `pages.yml`. Guarantees are proved; the
+acceptance vectors are tested.
 
 **What runs without Docker.** Every step of the guided build runs with no Docker
 and no image. LexLean's front end runs as WebAssembly on this machine once its
@@ -117,7 +117,7 @@ There are six tools, the only ones, named as Docker names its verbs:
 
 | Docker | Tool | What it does |
 | --- | --- | --- |
-| `docker init` | `prism_init` | Start the app from a starter, or list the starters |
+| `docker init` | `prism_init` | Start the app from the canonical template |
 | `docker build` | `prism_build` | Check, prove every theorem, build; `check: true` only checks |
 | `docker run` | `prism_run` | Answer a request from the built app |
 | `docker inspect` | `prism_inspect` | What the app guarantees, and what is checked, proved and built |
@@ -346,8 +346,8 @@ const vars = resolveVariables(manifest, process.env);
 
 ### Develop locally
 
-An app's model is LexLean the agent writes under `prism/src/`, started from a
-starter by `prism-code mcp`.
+An app's model is LexLean the agent writes under `app/src/`, in a project
+`prism-code mcp` starts from the canonical template.
 
 ```sh
 npx prism-code dev

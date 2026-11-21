@@ -1,18 +1,15 @@
 /**
- * The files of a Prism app on disk. The app lives in one folder, `prism/`
- * beside the user's code (or the current folder when it already holds a
- * `prism.toml`), so an existing repository gains one directory and nothing
- * else.
+ * The files of a Prism app on disk. Every app is made from the canonical template (template.mjs), a whole Prism
+ * project, and its LexLean model lives in its `app/` folder:
  *
- *   prism/src/<App>.lex.tex   the LexLean model: the app's one source of truth
- *   prism/prism.toml          the app's manifest, granting nothing
- *   prism/session.json        what was checked, proved and built, and where
- *   prism/...                 the LexLean and PrismPM project files of the template
+ *   app/src/<Module>.lex.tex  the LexLean model: the app's one source of truth
+ *   app/lexlean.toml          the LexLean project, with its lock and Lean workspace
+ *   app/session.json          what was checked, proved and built, and where
  *
- * A new app starts from a starter module (templates/starters), each file named
- * by its SHA-256 in templates/starters/index.json and copied only when its
- * bytes have that address. After that the model is the author's: Prism never
- * writes it again.
+ * After `prism_init` the model is the author's: Prism never writes it again.
+ *
+ * An app made before the canonical template lives in `prism/` (from a starter module, startApp below); it is read
+ * where it is. Starters are no longer offered: they remain only as the fixtures that test those apps' route.
  */
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -25,14 +22,17 @@ export const SESSION_SCHEMA = 'prism/session/2';
 const TEMPLATE_MODULE = 'TextRequest';
 const RENAMED = ['lexlean.toml', 'lakefile.toml', 'lake-manifest.json', 'prismpm.toml'];
 const UNUSED = [`src/${TEMPLATE_MODULE}.lex.tex`, 'src/Foundation/Utf8.lex.tex'];
-const STARTERS = new URL('../../templates/starters/', import.meta.url);
+// Not shipped: the starters an app was made from before the canonical template, kept as test fixtures.
+const STARTERS = new URL('../../test/fixtures/starters/', import.meta.url);
 
 export const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
 /** The app folder for a working directory. */
 export function appDir(cwd) {
-  if (existsSync(join(cwd, 'prism.toml')) && !existsSync(join(cwd, 'prism', 'prism.toml'))) return cwd;
-  return join(cwd, 'prism');
+  // An app made before the canonical template, from a starter, is read where it is.
+  if (!existsSync(join(cwd, 'app')) && existsSync(join(cwd, 'prism', 'prism.toml'))) return join(cwd, 'prism');
+  if (!existsSync(join(cwd, 'app')) && existsSync(join(cwd, 'prism.toml'))) return cwd;
+  return join(cwd, 'app');
 }
 
 const write = (dir, path, content) => {

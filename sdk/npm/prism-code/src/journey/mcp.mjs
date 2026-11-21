@@ -1,9 +1,9 @@
 /**
  * `prism-code mcp`: the Prism MCP server, over stdio, with no dependencies.
  *
- * A Prism app's one source of truth is its LexLean model under `prism/src/`,
- * which the agent writes. The server starts the app from a content-addressed
- * starter, then checks, proves, builds and answers from it. Proving and
+ * Every Prism app starts from the canonical template (template.mjs), and its one
+ * source of truth is its LexLean model under `app/src/`, which the agent writes.
+ * The server checks and proves it here, and answers from it when it is built. Proving and
  * building take minutes, longer than some agents wait for one tool call, so
  * both run as jobs: a call waits up to `wait` seconds, and a later call of the
  * same tool picks the job up where it is.
@@ -12,7 +12,8 @@ import { createInterface } from 'node:readline';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
-import { appDir, readSession, sourceDigest, sourceFiles, startApp, starters, writeSession } from './project.mjs';
+import { appDir, readSession, restampLock, sourceDigest, sourceFiles, writeSession } from './project.mjs';
+import { APP_FOLDER, TEMPLATE, alignToLexlean, instantiate } from './template.mjs';
 import { build, check, isRuleApp, prove, tryRequest } from './engine.mjs';
 import { NO_DOCKER_FREE_BUILD } from './frontend.mjs';
 import { gapLedger } from '../gaps.mjs';
@@ -44,13 +45,13 @@ const { version } = require('../../package.json');
 export const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 
 export const INSTRUCTIONS = `Prism builds formally verified apps with six tools named like Docker's. For Prism or /prism, call prism_init.
-An app's one source of truth is its LexLean model in prism/src/. Write it yourself, as the user describes the app.
+Every app starts from the canonical template; its one source of truth is its LexLean model in app/src/, written as the user describes.
 After each edit call prism_build (check: true only checks). When it names a fix, make exactly that fix and call it again; when it lists the theorems, show the user what each guarantees: Lean proved them, so the user must agree or strike.
 prism_run answers, prism_inspect audits, prism_push publishes by BLAKE3 address, prism_pull fetches and proves.
 ${NO_DOCKER_FREE_BUILD} Never set PRISM_CODE_TIER yourself; only the user chooses it.
 Say "proved" only for what Lean proved, "tested" for what acceptance vectors cover.`;
 
-const GREETING = 'Prism builds an app whose rules are proved by Lean, not just tested. Its one source is a LexLean model: I start it from a starter, write it with you, and Lean proves it.';
+const GREETING = 'Prism builds an app whose rules are proved by Lean, not just tested. Its one source is a LexLean model: I start it from the canonical template, write it with you, and Lean proves it.';
 
 /**
  * The six tools, the only ones there are, named as Docker names its verbs: init, build, run, inspect, push, pull.
@@ -59,12 +60,12 @@ const GREETING = 'Prism builds an app whose rules are proved by Lean, not just t
 export const TOOLS = [
   {
     name: 'prism_init',
-    description: `Start the app in this project from a starter LexLean module, as docker init writes a Dockerfile from a template. Before an app exists, with no starter, lists the starters and what each is for. ${NO_DOCKER_FREE_BUILD}`,
-    inputSchema: { type: 'object', properties: { starter: { type: 'string', description: 'The starter to start from: rule-app, decision-app or stateful-app.' } }, additionalProperties: false },
+    description: `Start the app in this project from the canonical template, UOR-Foundation/template, as docker init writes a project from one template: every file at a pinned commit, each admitted only when its bytes have the pinned SHA-256, with the LexLean model under app/src/ and the workflows that build the app on GitHub Actions and serve it on GitHub Pages. Every Prism app, simple or complex, starts from it. When an app is already here, says where it stands. ${NO_DOCKER_FREE_BUILD}`,
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
   },
   {
     name: 'prism_build',
-    description: "Build the LexLean model as it is on disk into a verified app, as docker build builds an image: check it, prove every theorem with Lean's kernel in this process, and, for a rule app, build the verified rule judge. With check: true, as docker build --check, only check it: every diagnostic at the line of prism/src/ it anchors to, in seconds, proving nothing. When the model does not check, returns the first problem with the exact fix: the line, and the name to write when one is misspelled. Returns state running while it works; call again to keep waiting.",
+    description: "Build the LexLean model as it is on disk into a verified app, as docker build builds an image: check it and prove every theorem with Lean's kernel in this process; the app itself is then built from the proved model by the template's own GitHub Actions workflow when the project is pushed. With check: true, as docker build --check, only check it: every diagnostic at the line of app/src/ it anchors to, in seconds, proving nothing. When the model does not check, returns the first problem with the exact fix: the line, and the name to write when one is misspelled. Returns state running while it works; call again to keep waiting.",
     inputSchema: { type: 'object', properties: { check: { type: 'boolean', description: 'Only check the model: every diagnostic, proving nothing. Default false.' }, wait: { type: 'number', description: 'Seconds to wait before returning, default 45.' } }, additionalProperties: false },
   },
   {
@@ -74,7 +75,7 @@ export const TOOLS = [
   },
   {
     name: 'prism_inspect',
-    description: 'What the app is and what it guarantees, as docker inspect reads an image, changing nothing: its starter and files, whether the model as it is on disk is checked, proved and built, and every theorem of the last proof with its axioms and status. Use it to audit an app.',
+    description: 'What the app is and what it guarantees, as docker inspect reads an image, changing nothing: its template and files, whether the model as it is on disk is checked, proved and built, and every theorem of the last proof with its axioms and status. Use it to audit an app.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
   },
   {
@@ -84,7 +85,7 @@ export const TOOLS = [
   },
   {
     name: 'prism_pull',
-    description: "Fetch an app by its address, as docker pull fetches an image, and have Lean's kernel prove it in this process before anything runs: every object is admitted only when its bytes re-derive its BLAKE3 label, and the model is proved again here, never taken on trust. Installs it as this project's app when none is here yet, else beside it under prism/.prism/pulled/. A rule app is then built, and its build must be the one pushed.",
+    description: "Fetch an app by its address, as docker pull fetches an image, and have Lean's kernel prove it in this process before anything runs: every object is admitted only when its bytes re-derive its BLAKE3 label, and the model is proved again here, never taken on trust. Installs it as this project's app when none is here yet, else beside it under app/.prism/pulled/.",
     inputSchema: { type: 'object', properties: { reference: { type: 'string', description: "The app: its κ-label (from this machine's Prism store), dir://<folder>#<κ>, or https://<site>/<path>#<κ>." }, wait: { type: 'number', description: 'Seconds to wait before returning, default 45.' } }, required: ['reference'], additionalProperties: false },
   },
 ];
@@ -123,7 +124,7 @@ const alive = (pid) => {
 };
 
 /** A server bound to a working directory. `send` writes one JSON-RPC message. */
-export function createServer({ cwd = process.cwd(), send, gaps = gapLedger() }) {
+export function createServer({ cwd = process.cwd(), send, gaps = gapLedger(), template = TEMPLATE, fetch = globalThis.fetch }) {
   const dir = appDir(cwd);
   const jobs = new Map();
   const load = () => readSession(dir);
@@ -157,7 +158,7 @@ export function createServer({ cwd = process.cwd(), send, gaps = gapLedger() }) 
   }
 
   async function longTool(kind, args, progress) {
-    if (!started()) return { state: 'blocked', message: 'There is no model yet. Call prism_init with a starter first.' };
+    if (!started()) return { state: 'blocked', message: 'There is no model yet. Call prism_init first.' };
     const session = load();
     const other = jobs.get(kind === 'build' ? 'prove' : 'build');
     if (other) return { state: 'busy', message: `A ${other.kind} is running; call ${CALL[other.kind]} to follow it.` };
@@ -200,7 +201,8 @@ export function createServer({ cwd = process.cwd(), send, gaps = gapLedger() }) 
     const ruleBuilt = session.status.ruleApp && session.status.lastBuild ? { ...session.status.ruleApp, source: session.status.lastBuild.source } : null;
     return {
       project: dir,
-      starter: session.starter,
+      template: session.template ?? null,
+      starter: session.starter ?? undefined,
       files: sourceFiles(dir),
       source,
       checked: current(session.status.checked),
@@ -214,37 +216,39 @@ export function createServer({ cwd = process.cwd(), send, gaps = gapLedger() }) 
   };
 
   // The steps the six tools are made of. None is a tool of its own.
-  function initApp(args) {
+  async function initApp() {
     setImmediate(() => import('./kernel-prove.mjs').then((m) => m.warmKernel()).catch(() => {}));
-    // LexLean as WebAssembly is fetched once, while the user is still describing the app.
+    // LexLean as WebAssembly is fetched once, while the template is fetched and the user describes the app.
     setImmediate(() => import('./lexlean-wasm.mjs').then((m) => m.lexleanReady()).catch(() => {}));
-    const all = starters();
-    const list = Object.entries(all).map(([name, s]) => ({ starter: name, module: s.module, shape: s.shape }));
-    if (started()) return { greeting: 'Welcome back.', ...status(), note: args.starter ? 'This project already holds a model, so no starter was written.' : undefined, language: LANGUAGE, nextSteps: [NO_DOCKER_FREE_BUILD] };
-    if (!args.starter) return { greeting: GREETING, project: dir, starters: list, next: 'Pick the starter whose shape fits the app the user describes, and call prism_init again with it.', nextSteps: [NO_DOCKER_FREE_BUILD] };
+    if (started()) return { greeting: 'Welcome back.', ...status(), language: LANGUAGE, nextSteps: [NO_DOCKER_FREE_BUILD] };
     let made;
     try {
-      made = startApp(dir, args.starter);
+      made = await instantiate(cwd, { template, fetch });
     } catch (error) {
-      return { ok: false, code: error.code, message: error.message, starters: list };
+      return { ok: false, code: error.code, message: error.message };
     }
+    const aligned = alignToLexlean(dir, { restamp: restampLock });
     const session = load();
-    session.starter = made.starter;
+    session.starter = null;
+    session.template = { repository: template.repository, commit: template.commit };
     session.status = {};
     save(session);
     return {
       ok: true,
-      project: dir,
-      starter: made.starter,
-      model: `src/${made.module}.lex.tex`,
+      greeting: GREETING,
+      project: cwd,
+      template: `${template.repository} at ${template.commit}`,
+      written: made.written.length,
+      aligned,
+      model: `${APP_FOLDER}/src/`,
       files: sourceFiles(dir),
-      next: `Edit prism/src/${made.module}.lex.tex to the app the user describes, then call prism_build.`,
+      next: `Write the app the user describes as the LexLean model under ${APP_FOLDER}/src/ (the template's model is an example to replace), then call prism_build.`,
       language: LANGUAGE,
       nextSteps: [NO_DOCKER_FREE_BUILD],
     };
   }
   async function checkModel() {
-    if (!started()) return { state: 'blocked', message: 'There is no model yet. Call prism_init with a starter first.' };
+    if (!started()) return { state: 'blocked', message: 'There is no model yet. Call prism_init first.' };
     const session = load();
     const result = await check(dir, session, { gaps });
     save(session);
@@ -259,7 +263,7 @@ export function createServer({ cwd = process.cwd(), send, gaps = gapLedger() }) 
   }
 
   const tools = {
-    prism_init: (args) => initApp(args),
+    prism_init: () => initApp(),
     // Check, prove, then build what needs no image: a rule app's verified judge. Another app stops at proved.
     // With check: true, as docker build --check, only the check.
     async prism_build(args, progress) {
@@ -267,7 +271,7 @@ export function createServer({ cwd = process.cwd(), send, gaps = gapLedger() }) 
       const verified = await verifyModel(args, progress);
       // Proved, not a rule app: say plainly that nothing was built here, and how it is built.
       if (verified.step === 'prove' && verified.state === 'done' && verified.ok !== false && !isRuleApp(load())) {
-        return { ...verified, built: { ok: false, reason: "Proved, not built: this app is built into a holo through Rust to WebAssembly, which does not run in this process yet. npx prism-code build --remote github builds it on your repository's own GitHub Actions." } };
+        return { ...verified, built: { ok: false, where: 'github', reason: "Proved here. The app itself is built from this proved model by the template's .github/workflows/build.yml on GitHub Actions, and served by pages.yml on GitHub Pages, when this project is pushed to a GitHub repository." } };
       }
       if (verified.step !== 'prove' || verified.state !== 'done' || verified.ok === false || !isRuleApp(load())) return verified;
       const built = await longTool('build', args, progress);
@@ -287,7 +291,7 @@ export function createServer({ cwd = process.cwd(), send, gaps = gapLedger() }) 
     },
     // Publish what is proved: the model, and the build when it is the build of this model.
     async prism_push(args) {
-      if (!started()) return { state: 'blocked', message: 'There is no model yet. Call prism_init with a starter first.' };
+      if (!started()) return { state: 'blocked', message: 'There is no model yet. Call prism_init first.' };
       const now = status();
       const session = load();
       // A build of an earlier model is not this app's build: it is left out.
@@ -374,7 +378,7 @@ export function createServer({ cwd = process.cwd(), send, gaps = gapLedger() }) 
           return reply(id, { prompts: PROMPTS });
         case 'prompts/get':
           if (params.name !== 'prism') return error(id, -32602, `Unknown prompt: ${params.name}`);
-          return reply(id, { description: PROMPTS[0].description, messages: [{ role: 'user', content: { type: 'text', text: 'Call the prism_init tool and follow what it returns: start the app from the starter that fits what I want, write its LexLean model with me, and show me its guarantees before you prove or build.' } }] });
+          return reply(id, { description: PROMPTS[0].description, messages: [{ role: 'user', content: { type: 'text', text: 'Call the prism_init tool and follow what it returns: start the app from the canonical template, write its LexLean model with me, and show me its guarantees before you prove or build.' } }] });
         case 'resources/list':
           return reply(id, {
             resources: [

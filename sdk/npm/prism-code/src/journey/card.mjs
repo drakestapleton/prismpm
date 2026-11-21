@@ -1,19 +1,11 @@
 /**
- * The LexLean an agent needs to write a Prism app, on one card: the forms the starters use, the rules LexLean holds
+ * The LexLean an agent needs to write a Prism app, on one card: the forms a model uses, the rules LexLean holds
  * them to, and the one proof the kernel finds for a guarantee. LexLean's vocabulary is closed, so a guessed form is
- * refused; this card is what prism_init hands the agent before its first edit. Every form here is a starter's. Its
- * examples, put in the decision-app starter's two modules as written, check and are proved by prism_build (one
- * theorem, 2026-11-20); test/card.test.mjs holds the card's rules to the starters' own text.
+ * refused; this card is what prism_init hands the agent before its first edit. Every form here is one the earlier
+ * starter modules used (now test/fixtures/starters); its examples, put in the decision-app fixture's two modules as
+ * written, check and are proved by prism_build (one theorem, 2026-11-20); test/card.test.mjs holds the card to them.
  */
-export const LEXLEAN_CARD = `LexLean, as a Prism app uses it. Edit the starter; keep its header lines as they are.
-
-A rule app (starter rule-app) is data, not code: edit the values of title, fields, answers, otherwise, rules, guarantees and examples in src/App.lex.tex, and keep its five structures as they are. Fields and answers are referred to by their position, from 0.
-- fields: (record Field {name := "weight", least := 0, greatest := 50, values := (nil String)}) for a number from least to greatest; for a choice, least := 0, greatest := n - 1 and values := (cons "no" (cons "yes" (nil String))), whose positions are the values.
-- A condition: (record Condition {field := 1, op := 4, value := 1}). op: 0 <, 1 <=, 2 >, 3 >=, 4 =, 5 not =.
-- rules: the first rule whose conditions all hold answers; when none does, otherwise (an answer position) answers.
-- A guarantee: (record Guarantee {always := 0, conditions := …, answer := 1}). always := 0: when the conditions hold, the answer is never that one; always := 1: it is always that one. Lean's kernel proves each for every request within the fields' bounds.
-- examples: (record Example {request := "1 no", answer := "free"}), the values in field order, a choice by its word. Each is an acceptance vector, with one more the build adds: a request with one value too many answers invalid.
-Any other app is written as below.
+export const LEXLEAN_CARD = `LexLean, as a Prism app uses it. Every app starts from the canonical template: write the app in its model under app/src/, keeping each module's header lines as they are.
 
 Module: \\begin{lexlean}{Name} … \\begin{semanticmodule} … \\end{semanticmodule} \\end{lexlean}. A proofs module imports the model with \\importmodule{Name} and refers to it as Name::thing.
 

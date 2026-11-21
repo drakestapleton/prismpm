@@ -48,7 +48,7 @@ test('setup ends by telling the user that no step needs Docker, then to ask an a
 });
 
 test('the MCP instructions every agent receives name the LexLean model and the six tools, that no step needs Docker or a server, and leave the tier to the user', () => {
-  assert.match(INSTRUCTIONS, /one source of truth is its LexLean model in prism\/src\//);
+  assert.match(INSTRUCTIONS, /canonical template; its one source of truth is its LexLean model in app\/src\//);
   assert.match(INSTRUCTIONS, /For Prism or \/prism, call prism_init\./);
   for (const name of ['prism_build', 'prism_run', 'prism_inspect', 'prism_push', 'prism_pull']) assert.ok(INSTRUCTIONS.includes(name), name);
   assert.doesNotMatch(INSTRUCTIONS, /prism_start|prism_check|prism_prove|prism_verify|prism_try|prism_status/);

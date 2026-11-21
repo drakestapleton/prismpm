@@ -908,6 +908,13 @@ pub fn run_at(root: &Path, id: &str) {
             &[("sdk/npm/prism-code/test/agent-tools.test.mjs", 8)],
             "600000",
         ),
+        // Every app from one canonical template, pinned by commit and SHA-256 (prism_init).
+        "DK-50" => node_suite::verify_exact(
+            root,
+            id,
+            &[("sdk/npm/prism-code/test/canonical-template.test.mjs", 4)],
+            "600000",
+        ),
         // The `prism-code system` and `auth` command groups of #446 and #447.
         "DK-44" => node_suite::verify_exact(
             root,
