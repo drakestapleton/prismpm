@@ -28,6 +28,9 @@ export function prismTerminal(makeLine, seen = []) {
       // Output handed to the panel and not yet acknowledged as drawn: [characters left, drained].
       this.waiting = [];
       this.decoder = new TextDecoder('utf-8');
+      // What the panel is told about this terminal: its name on the tab.
+      this.told = new Emitter();
+      this.onDidChangeProperty = this.told.event;
     }
     async start() {
       const fire = (text) => { if (text) this.out.fire(text); };
@@ -43,6 +46,8 @@ export function prismTerminal(makeLine, seen = []) {
       seen.push(this);
       fire(this.line.greeting + '\r\n');
       this.line.editor.start();
+      // Named after the page has taken the process, so the name is not the workbench's guess at a shell.
+      setTimeout(() => this.told.fire({ type: 'title', value: 'prism' }), 0);
       return undefined;
     }
     input(data) { this.line?.editor.feed(data); }
