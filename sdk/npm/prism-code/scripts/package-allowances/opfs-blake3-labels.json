@@ -1,0 +1,4 @@
+{
+  "kib": 2,
+  "reason": "the browser store keeps bytes under their BLAKE3 label, with the SHA-256 label as a checked field that leads to it: the second index, the check of both labels on a read, and the removal of a store laid out before (journey/kappa-opfs.mjs, about 1.9 KiB)."
+}
