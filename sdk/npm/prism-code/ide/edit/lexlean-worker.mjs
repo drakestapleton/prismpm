@@ -5,7 +5,7 @@
 // file system held in memory (src/journey/wasi-memory.mjs). Nothing leaves the tab.
 //
 // Messages in:  { id, files: { '/path': 'text', ... } }
-// Messages out: { ready: true, ms, kappa } once, or { failed: 'why' };
+// Messages out: { ready: true, ms, kappa } once, or { failed: 'why', reason: 'mismatch' | 'absent' };
 //               { id, result, ms } with LexLean's command result, or { id, error }.
 
 const base = new URL('./prism-code/', import.meta.url).href;
@@ -22,7 +22,7 @@ async function load(wasmUrl, want) {
   const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
   const label = kappa(bytes);
   // The bytes run only if they are the pinned ones.
-  if (label !== want.kappa) throw new Error(`the LexLean executable hashes to ${label}, not the pinned ${want.kappa}`);
+  if (label !== want.kappa) throw Object.assign(new Error(`the LexLean executable hashes to ${label}, not the pinned ${want.kappa}`), { reason: 'mismatch' });
   const module = await WebAssembly.compile(bytes);
   postMessage({ ready: true, ms: Math.round(performance.now() - started), kappa: label, bytes: bytes.length });
   return { module, runWasi };
@@ -31,7 +31,7 @@ async function load(wasmUrl, want) {
 onmessage = async ({ data }) => {
   if (data.start) {
     modulePromise = load(data.start.url, data.start.pin);
-    modulePromise.catch((e) => postMessage({ failed: String(e?.message ?? e) }));
+    modulePromise.catch((e) => postMessage({ failed: String(e?.message ?? e), reason: e?.reason ?? 'absent' }));
     return;
   }
   try {

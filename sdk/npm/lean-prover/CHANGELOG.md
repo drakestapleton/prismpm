@@ -2,7 +2,6 @@
 
 ## [0.1.1](https://github.com/UOR-Foundation/prismpm/compare/prism-code-lean-prover-v0.1.0...prism-code-lean-prover-v0.1.1) (2026-11-20)
 
-
 ### Features Added
 
 * **lean-prover:** a sealed browser prover, and the kernel path, judged by Lean 4.32.2 ([e90a4d0](https://github.com/UOR-Foundation/prismpm/commit/e90a4d0ef57c19b1e0d173e94f13b846c625d8ce))
@@ -32,6 +31,9 @@
 * **lean-prover:** the WASM Lean prover in sdk/npm/lean-prover ([15e2964](https://github.com/UOR-Foundation/prismpm/commit/15e2964bf1cc35acec82073982106a5a5af48147))
 * **lean-prover:** the WASM Lean prover, ported from the foundry prototype ([512e385](https://github.com/UOR-Foundation/prismpm/commit/512e38598dbef1066564d21e6055f94394bfc924))
 
+### Breaking Changes
+
+None.
 
 ### Bugs Fixed
 
@@ -47,7 +49,6 @@
 * **lean-prover:** the sealed prover works in every browser when Lean's recursion is deep ([472c7d0](https://github.com/UOR-Foundation/prismpm/commit/472c7d0c6a9e9ec2c008943473d63bc060b47f8f))
 * **lean-prover:** two planted defects were not planted ([6a7c56a](https://github.com/UOR-Foundation/prismpm/commit/6a7c56a864fa61ef48f46169b77c18642488dfbb))
 * **lean-prover:** under the 4 GiB cap the gate restarts the engine before every module ([0c022f2](https://github.com/UOR-Foundation/prismpm/commit/0c022f2b50e6ff3f3488f57b8edc2564db8c3c94))
-
 
 ### Other Changes
 

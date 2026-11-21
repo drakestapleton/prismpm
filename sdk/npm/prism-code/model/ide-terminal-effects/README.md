@@ -64,7 +64,7 @@ A planted defect (open a clicked link without asking) is refused in CI, and the 
 
 ## Not covered
 
-That every such sequence reaches this table is the page's job and is unproved. The plan: a handler registered for each sequence through xterm.js's parser hooks, a `linkHandler`, and the clipboard and image addons not loaded at all. xterm.js's parser is not modelled.
+That every such sequence reaches this table is the page's job and is unproved. In the edit page (`ide/edit/terminal/effects.mjs`) a handler is registered for each sequence through xterm.js's parser hooks, with a `linkHandler`, and the clipboard and image addons are not loaded at all. One does not reach the table: xterm.js 6.0.0 drops every window operation itself while its `windowOptions` are off, and they are. xterm.js's parser is not modelled.
 "Apply" for a title means setting it as plain text, cut to a fixed length. That is page code.
 Whether a gesture was the user's is the browser's word (`isTrusted`, user activation), read by the page.
 The table does not judge what stays inside the grid: colours, cursor moves, the alternate screen, mouse reporting.

@@ -27,7 +27,7 @@ async function open() {
   const manifest = await (await fetch(base + 'manifest.json', { cache: 'no-store' })).json();
   const [glue, wasm, library] = await Promise.all([manifest.glue, manifest.wasm, manifest.library].map(async (entry) => unpack(await fetch(base + entry.file))));
   const [g, w, l] = await Promise.all([glue, wasm, library].map(sha256));
-  if (g !== manifest.glue.sha256 || w !== manifest.wasm.sha256 || l !== manifest.library.sha256) throw new Error('the kernel, its loader or its library is not the pinned one');
+  if (g !== manifest.glue.sha256 || w !== manifest.wasm.sha256 || l !== manifest.library.sha256) throw Object.assign(new Error('the kernel, its loader or its library is not the pinned one'), { reason: 'mismatch' });
   const b = manifest.binding;
   if (!b || b.kernel !== w || b.loader !== g || b.library !== l) throw new Error('there is no record that this kernel judged this library whole');
 
@@ -57,7 +57,7 @@ async function open() {
 }
 
 const kernel = open();
-kernel.catch((e) => postMessage({ failed: String(e?.message ?? e) }));
+kernel.catch((e) => postMessage({ failed: String(e?.message ?? e), reason: e?.reason ?? 'absent' }));
 
 onmessage = async ({ data }) => {
   try {

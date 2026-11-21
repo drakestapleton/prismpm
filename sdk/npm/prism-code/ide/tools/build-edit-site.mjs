@@ -8,7 +8,9 @@
 //   <out>/edit/kernel/               Lean's kernel, its loader and its library, with the manifest that names them
 //   <out>/edit/project/              the model the page opens when it is given no other, and project.json listing it
 //   <out>/edit/ide/                  the same loop in the VS Code workbench, when dist-model/ has been built
-//   <out>/edit/site.json             what was written, from which commit, each file with its SHA-256
+//   <out>/edit/vendor/xterm/         xterm.js and its addons, the files npm ships, each the one terminal/pins.json names
+//   <out>/edit/terminal/tables.json  the proved tables the terminal asks, read from model/ide-terminal-* and model/ide-audit
+//   <out>/edit/site.json             what was written, from which commit, each file with its BLAKE3 label and its SHA-256
 //
 // Two things are fetched, once, by prism-code itself: the LexLean executable and the kernel. Each is admitted only
 // when its bytes decode to the BLAKE3 label prism-code pins, and the page's workers check them again before running
@@ -21,6 +23,8 @@ import { fileURLToPath } from 'node:url';
 import { LEXLEAN_WASM, ensureLexleanWasm, lexleanWasmFile } from '../../src/journey/lexlean-wasm.mjs';
 import { ensureKernel, hasKernel, readKernelFile } from '../../src/journey/kernel-store.mjs';
 import { projectListing } from './edit-project.mjs';
+import { kappa } from '../../src/blake3.mjs';
+import { terminalTables, vendorFiles } from './terminal-site.mjs';
 
 const [outArg, projectArg, commit = 'unknown'] = process.argv.slice(2);
 if (!outArg || !projectArg) { console.error('usage: node tools/build-edit-site.mjs <out dir> <project dir> [commit]'); process.exit(64); }
@@ -45,6 +49,11 @@ writeFileSync(join(site, 'kernel', 'manifest.json'), manifest);
 const named = JSON.parse(manifest);
 for (const part of [named.glue, named.wasm, named.library]) writeFileSync(join(site, 'kernel', part.file), readKernelFile(part.file));
 
+// The terminal: xterm.js, refused here when an installed file is not the pinned one, and its tables.
+mkdirSync(join(site, 'vendor', 'xterm'), { recursive: true });
+for (const [name, bytes] of vendorFiles()) writeFileSync(join(site, 'vendor', 'xterm', name), bytes);
+writeFileSync(join(site, 'terminal', 'tables.json'), JSON.stringify(await terminalTables()) + '\n');
+
 const listing = projectListing(project);
 for (const path of listing.files) cpSync(join(project, path), join(site, 'project', path));
 writeFileSync(join(site, 'project.json'), JSON.stringify(listing) + '\n');
@@ -60,7 +69,8 @@ if (hasWorkbench) {
 const files = [];
 const walk = (dir) => { for (const name of readdirSync(dir).sort()) { const p = join(dir, name); if (statSync(p).isDirectory()) walk(p); else files.push(p); } };
 walk(site);
-const written = files.map((p) => ({ path: relative(site, p).split('\\').join('/'), bytes: statSync(p).size, sha256: createHash('sha256').update(readFileSync(p)).digest('hex') }));
+// Each file is named by its BLAKE3 label; SHA-256 stays beside it for whoever reads the listing by that.
+const written = files.map((p) => { const bytes = readFileSync(p); return { path: relative(site, p).split('\\').join('/'), bytes: bytes.length, kappa: kappa(bytes), sha256: createHash('sha256').update(bytes).digest('hex') }; });
 const version = JSON.parse(readFileSync(join(pkg, 'package.json'), 'utf8')).version;
 writeFileSync(join(site, 'site.json'), JSON.stringify({ schema: 'prism-ide/edit-site/1', prismCode: version, commit, lexlean: LEXLEAN_WASM.kappa, workbench: hasWorkbench, project: listing, files: written }, null, 1) + '\n');
 const total = written.reduce((n, f) => n + f.bytes, 0);

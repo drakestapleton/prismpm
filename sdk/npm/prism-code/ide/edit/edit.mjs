@@ -16,6 +16,17 @@ const $ = (id) => document.getElementById(id);
 const state = (window.prismEdit = { ready: false, checks: 0, last: null, error: null, engine: null });
 const PAUSE_MS = 350;
 
+// Offline, by content: the site's service worker, where the site was assembled with one (tools/build-offline-site.mjs).
+// It serves each published file only as the bytes its BLAKE3 label names, from this browser once it has them. This
+// page loaded before the worker could take over, so it tells the worker what it loaded.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register(new URL('../sw.js', location.href)).then(async () => {
+    const worker = (await navigator.serviceWorker.ready).active;
+    navigator.serviceWorker.addEventListener('message', ({ data }) => { if (data && 'warmed' in data) state.offline = data; });
+    setTimeout(() => worker?.postMessage({ warm: [location.href, ...performance.getEntriesByType('resource').map((entry) => entry.name)] }), 4000);
+  }).catch(() => { /* no worker here: the page works as before, from the network */ });
+}
+
 // ?project=<address of a folder> opens the model published there: its project.json lists its files, which are
 // fetched from that folder. Without it, the model that came with the page is opened.
 const asked = new URLSearchParams(location.search).get('project');
@@ -42,12 +53,15 @@ const original = files[entry];
 $('file').textContent = listing.entry;
 $('source').value = original;
 
+// What each executable turned out to be, once known: 'pinned', 'mismatch' or 'absent'. The terminal asks.
+const settle = {};
+const settled = { lexlean: new Promise((r) => { settle.lexlean = r; }), kernel: new Promise((r) => { settle.kernel = r; }) };
 const worker = new Worker(new URL('./lexlean-worker.mjs', import.meta.url), { type: 'module' });
 const waiting = new Map();
 let nextId = 0;
 worker.onmessage = ({ data }) => {
-  if (data.ready) { state.engine = data; $('engine').textContent = `LexLean ${LEXLEAN_WASM.commit.slice(0, 7)}, ${(data.bytes / 1048576).toFixed(1)} MB, checked against ${data.kappa.slice(0, 19)}… and ready in ${data.ms} ms`; return; }
-  if (data.failed) { state.error = data.failed; $('engine').textContent = 'LexLean could not start: ' + data.failed; $('status').textContent = 'Not checked.'; state.ready = true; return; }
+  if (data.ready) { settle.lexlean('pinned'); state.engine = data; $('engine').textContent = `LexLean ${LEXLEAN_WASM.commit.slice(0, 7)}, ${(data.bytes / 1048576).toFixed(1)} MB, checked against ${data.kappa.slice(0, 19)}… and ready in ${data.ms} ms`; return; }
+  if (data.failed) { settle.lexlean(data.reason ?? 'absent'); state.error = data.failed; $('engine').textContent = 'LexLean could not start: ' + data.failed; $('status').textContent = 'Not checked.'; state.ready = true; return; }
   waiting.get(data.id)?.(data);
   waiting.delete(data.id);
 };
@@ -60,8 +74,19 @@ const { ruleTable, tableWords, tableShape, counterexample, OPS } = await import(
 // The app this model was published with, if any: its record says what the app runs.
 const { appRecord, tableFacts, differences, verdict } = await import('./app-match.mjs');
 const beside = await appRecord(PROJECT);
+// A holo app has another record: the label of its holo and the identity of the model it was built from.
+const { holoAppRecord, holoVerdict } = await import('./holo-match.mjs');
+const holoBeside = beside ? null : await holoAppRecord(PROJECT);
 function compare(table, text) {
   if (!PROJECT) { $('appMatch').hidden = true; state.app = null; return; }
+  if (holoBeside) {
+    const said = holoVerdict(holoBeside, state.last?.semanticId, text !== original);
+    state.app = { found: true, kind: 'holo', state: said.state, holo: holoBeside.holo };
+    $('appMatch').textContent = said.text;
+    $('appMatch').dataset.state = said.state;
+    $('appMatch').hidden = false;
+    return;
+  }
   const differs = beside && table ? differences(tableFacts(table, { tableWords, tableShape }), beside.record) : [];
   const said = !beside ? verdict(null, [], false) : !table ? { state: 'unread', text: `This model is not read as a rule table here, so it is not compared with the app at ${beside.app}.` } : verdict(beside, differs, text !== original);
   state.app = { found: !!beside, state: said.state, differs };
@@ -72,8 +97,8 @@ function compare(table, text) {
 const prover = new Worker(new URL('./prove-worker.mjs', import.meta.url), { type: 'module' });
 const proving = new Map();
 prover.onmessage = ({ data }) => {
-  if (data.ready) { state.kernel = data; return; }
-  if (data.failed) { state.kernel = { failed: data.failed }; for (const done of proving.values()) done({ error: data.failed }); proving.clear(); return; }
+  if (data.ready) { settle.kernel('pinned'); state.kernel = data; return; }
+  if (data.failed) { settle.kernel(data.reason ?? 'absent'); state.kernel = { failed: data.failed }; for (const done of proving.values()) done({ error: data.failed }); proving.clear(); return; }
   proving.get(data.id)?.(data);
   proving.delete(data.id);
 };
@@ -197,3 +222,19 @@ $('source').addEventListener('scroll', () => { $('gutter').scrollTop = $('source
 $('revert').addEventListener('click', () => { $('source').value = original; run(); });
 gutter(new Set());
 run();
+
+// The terminal: a command line for this model, on xterm.js. It gets the page's own workers and nothing else.
+import('./terminal/terminal.mjs').then(({ startTerminal }) => startTerminal($('terminal'), {
+  project: () => ({ ...files, [entry]: $('source').value }),
+  check, snapshotOf, prove,
+  held: async () => ({ lexlean: await settled.lexlean, kernel: await settled.kernel }),
+  pin: LEXLEAN_WASM,
+  setTitle: (text) => { $('terminalTitle').textContent = text; },
+  find: $('terminalFind'),
+  // The six commands that change a file change what this page holds: the open file in the editor, the others in
+  // memory. As with typing, nothing is saved anywhere, and the model is checked again.
+  change: {
+    write: (path, text) => { if (path === entry) $('source').value = text; else files[path] = text; clearTimeout(timer); run(); },
+    remove: (path) => { if (path === entry) throw new Error(listing.entry + ' is the file open in the editor; it stays'); delete files[path]; clearTimeout(timer); run(); },
+  },
+})).catch((error) => { $('terminal').textContent = 'The terminal could not start: ' + (error?.message ?? error); });

@@ -24,9 +24,16 @@
     "@codingame/monaco-vscode-model-service-override": "^39.0.5",
     "@codingame/monaco-vscode-notifications-service-override": "^39.0.5",
     "@codingame/monaco-vscode-storage-service-override": "^39.0.5",
+    "@codingame/monaco-vscode-terminal-service-override": "39.0.5",
     "@codingame/monaco-vscode-theme-defaults-default-extension": "^39.0.5",
     "@codingame/monaco-vscode-theme-service-override": "^39.0.5",
     "@codingame/monaco-vscode-workbench-service-override": "^39.0.5",
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/addon-search": "0.16.0",
+    "@xterm/addon-unicode11": "0.9.0",
+    "@xterm/addon-web-links": "0.12.0",
+    "@xterm/addon-webgl": "0.19.0",
+    "@xterm/xterm": "6.0.0",
     "vite": "^6.4.6"
   }
 }

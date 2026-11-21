@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { LEXLEAN_WASM, ensureLexleanWasm, lexleanWasmFile } from '../../src/journey/lexlean-wasm.mjs';
 import { projectListing } from './edit-project.mjs';
 import { ensureKernel, hasKernel, readKernelFile } from '../../src/journey/kernel-store.mjs';
+import { terminalTables, vendorFiles } from './terminal-site.mjs';
 
 const [projectArg, port = '4170'] = process.argv.slice(2);
 if (!projectArg) { console.error('usage: node tools/serve-edit.mjs <project dir> [port]'); process.exit(64); }
@@ -24,10 +25,14 @@ if (!hasKernel()) await ensureKernel();
 const KERNEL_FILES = new Set(['lean-kernel.mjs.gz', 'lean-kernel.wasm.gz', 'library.ndjson.gz']);
 
 const { files, entry } = projectListing(project);
+// The terminal's two published pieces: xterm.js, held to its pins, and the proved tables it asks.
+const vendor = vendorFiles();
+const tables = await terminalTables();
 const json = (value) => ({ type: 'application/json', body: Buffer.from(JSON.stringify(value)) });
 const fixed = {
   '/edit/project.json': json({ files, entry }),
   '/edit/pin.json': json({ commit: LEXLEAN_WASM.commit, kappa: LEXLEAN_WASM.kappa, encoding: LEXLEAN_WASM.encoding }),
+  '/edit/terminal/tables.json': json(tables),
 };
 // Longest prefix first.
 // The model editor on the full workbench, when it has been built (npx vite build -c vite.model.config.js): its
@@ -40,6 +45,12 @@ createServer(async (request, response) => {
   const send = (status, type, body) => response.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }).end(body);
   if (path === '/') { response.writeHead(302, { location: '/edit/' }).end(); return; }
   if (fixed[path]) { send(200, fixed[path].type, fixed[path].body); return; }
+  if (path.startsWith('/edit/vendor/xterm/')) {
+    const name = path.slice('/edit/vendor/xterm/'.length);
+    if (!vendor.has(name)) { send(404, 'text/plain', 'not found'); return; }
+    send(200, TYPES[extname(name)] ?? 'application/octet-stream', vendor.get(name));
+    return;
+  }
   try {
     if (path === '/edit/lexlean.wasm.gz') { send(200, 'application/gzip', await readFile(wasm)); return; }
     if (path === '/edit/kernel/manifest.json') { send(200, 'application/json', await readFile(join(src, 'journey', 'kernel', 'manifest.json'))); return; }

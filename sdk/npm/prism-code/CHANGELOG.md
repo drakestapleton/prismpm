@@ -6,6 +6,45 @@ Version 0.1.0 was a canonicalization library with no entry here; its API lives o
 
 To move to 1.0, read the [migration guide](../../../docs/site/migration/to-1-0.md).
 
+## [0.10.3](https://github.com/UOR-Foundation/prismpm/compare/prism-code-v0.10.2...prism-code-v0.10.3) (2026-11-21)
+
+### Features Added
+
+* **prism-code:** a rule app's page carries its model, and the audit page opens it in the editor ([8e111ae](https://github.com/UOR-Foundation/prismpm/commit/8e111ae111180cfa3b1acfef264893bce2325cd1))
+* **prism-code:** a rule app's page carries its model, and the audit page opens it in the editor ([1656a6e](https://github.com/UOR-Foundation/prismpm/commit/1656a6ee67829daf4f945590b64f21e94b76ad12))
+* **prism-code:** a terminal in the Prism IDE's edit page, on xterm.js, judged by its proved tables ([6837c85](https://github.com/UOR-Foundation/prismpm/commit/6837c85aa111feac4f0110d719b126f2be8d87f5))
+* **prism-code:** a terminal in the Prism IDE's edit page, on xterm.js, judged by its proved tables ([67869b4](https://github.com/UOR-Foundation/prismpm/commit/67869b4cd679f9019e32311f5650c745c98600bf))
+* **prism-code:** colour LexLean models in the workbench editor ([45e9452](https://github.com/UOR-Foundation/prismpm/commit/45e94525cf36310d5bd54caab795e6a89c6cbda8))
+* **prism-code:** edit a LexLean model in a browser tab, with LexLean checking and Lean's kernel proving as you type ([1d4c0dd](https://github.com/UOR-Foundation/prismpm/commit/1d4c0dd9b6801c0a9c7233b0c4cc01d6c2fe329f))
+* **prism-code:** every file of a model opens in the workbench, with the Explorer and the command palette ([a2eea05](https://github.com/UOR-Foundation/prismpm/commit/a2eea05e3745856a734f1aa8cf14a5e4e0084cd4))
+* **prism-code:** every file of a model opens in the workbench, with the Explorer and the command palette ([e6c414d](https://github.com/UOR-Foundation/prismpm/commit/e6c414dca23a4ae0a9b0d46473d322d8aaa8e656))
+* **prism-code:** open the model editor in a named theme ([7179907](https://github.com/UOR-Foundation/prismpm/commit/7179907d58df3798b16cbe754430a201af11b662))
+* **prism-code:** publish the edit page and the workbench editor on Pages ([cecfdd9](https://github.com/UOR-Foundation/prismpm/commit/cecfdd9b2bccb23c17cabe0d8a080470d2bba678))
+* **prism-code:** publish the edit page and the workbench editor on Pages ([54d2415](https://github.com/UOR-Foundation/prismpm/commit/54d2415ba4b4a80d4f59666f8ce4156ad5f01f2e))
+* **prism-code:** six canonical tools named like Docker, with prism_push and prism_pull by BLAKE3 address ([#764](https://github.com/UOR-Foundation/prismpm/issues/764)) ([5c142ea](https://github.com/UOR-Foundation/prismpm/commit/5c142eadd101d373fcb347c57707b051c9ea5469))
+* **prism-code:** specify the Prism IDE's embedded terminal as four proved rule tables ([21c72e2](https://github.com/UOR-Foundation/prismpm/commit/21c72e29d8c930cfa6050b0cfce191a7607f0557))
+* **prism-code:** specify the Prism IDE's embedded terminal as four proved rule tables ([12a216f](https://github.com/UOR-Foundation/prismpm/commit/12a216fa05cf53d19c55a70fb8b00f5abbbba061))
+* **prism-code:** the edit pages say whether a model is the one its app runs ([877baa8](https://github.com/UOR-Foundation/prismpm/commit/877baa8b261e7217e2afd0f8958a1ebaa41d204c))
+* **prism-code:** the edit pages say whether a model is the one its app runs ([26a78eb](https://github.com/UOR-Foundation/prismpm/commit/26a78eb9af91443cf0060a234c5c880caa6732d7))
+* **prism-code:** the Prism IDE's audit view and its audit-status model, a LexLean rule table with 14 guarantees Lean's kernel accepts ([77bba8d](https://github.com/UOR-Foundation/prismpm/commit/77bba8d8f43d191fa4f871276a15d96998828e5d))
+* **prism-code:** the Prism terminal in the workbench's own panel, with output kept by BLAKE3 label between visits ([3089e23](https://github.com/UOR-Foundation/prismpm/commit/3089e23792cf56e7835a59dacad26333d5aa0da7))
+* **prism-code:** the workbench hands the model over as one archive, named by its BLAKE3 label ([814c173](https://github.com/UOR-Foundation/prismpm/commit/814c173f1e477aee8744847a0b65a3abc9aa42d9))
+* **prism-code:** the workbench hands the model over as one archive, named by its BLAKE3 label ([db591ec](https://github.com/UOR-Foundation/prismpm/commit/db591ec9a512c0822dbe0b4b2e9888b02a88ce74))
+* **prism-code:** the workbench keeps a reader's changes across a reload, named by BLAKE3 ([5800767](https://github.com/UOR-Foundation/prismpm/commit/5800767941cc29e2dc0902a6f764ec2b5d9b46b1))
+* **prism-code:** the workbench keeps a reader's changes across a reload, named by BLAKE3 ([5e25ac2](https://github.com/UOR-Foundation/prismpm/commit/5e25ac2022229ae7b77e2a3b703abc8749b77e67))
+
+### Breaking Changes
+
+None.
+
+### Bugs Fixed
+
+* **lean-prover:** one refused LexLean-produced proof no longer sinks a project; prism-code proves from LexLean's declarations ([#762](https://github.com/UOR-Foundation/prismpm/issues/762)) ([5ae88fa](https://github.com/UOR-Foundation/prismpm/commit/5ae88facb207f654b182b061efcfb99478635b2a))
+* **prism-code:** the IDE proving script reads the build from the session ([9ce0b8c](https://github.com/UOR-Foundation/prismpm/commit/9ce0b8cb534d724ddecf098edd64d887bca48190))
+* **prism-code:** the published edit page asks for no dot-file ([a3e4e40](https://github.com/UOR-Foundation/prismpm/commit/a3e4e4094a17e6cc14e8c0a21c1107c3369d1682))
+* **prism-code:** the published edit page asks for no dot-file ([dc3b7a6](https://github.com/UOR-Foundation/prismpm/commit/dc3b7a6f94835d888b0c8127cfcbe6ea96fe8d65))
+* **prism-code:** the workbench no longer runs the LexLean tokenizer on the open file ([384ab64](https://github.com/UOR-Foundation/prismpm/commit/384ab6430151e98d47d4bdd9da7e27fc8c8a0b6d))
+
 ## [0.10.2](https://github.com/UOR-Foundation/prismpm/compare/prism-code-v0.10.1...prism-code-v0.10.2) (2026-11-20)
 
 
@@ -20,6 +59,10 @@ To move to 1.0, read the [migration guide](../../../docs/site/migration/to-1-0.m
 * **prism-code:** the Prism IDE's capability gate, command table and scope kernel, stated in LexLean and proved by Lean ([616421e](https://github.com/UOR-Foundation/prismpm/commit/616421eced13d0ab305fb2d8464fedf14abae9c4))
 * **prism-code:** the Prism IDE's capability gate, command table and scope kernel, stated in LexLean and proved by Lean ([9d28d69](https://github.com/UOR-Foundation/prismpm/commit/9d28d695b6ad22af2dc6eb12fafbfdd39434ddf7))
 
+
+### Breaking Changes
+
+None.
 
 ### Bugs Fixed
 
@@ -39,6 +82,10 @@ To move to 1.0, read the [migration guide](../../../docs/site/migration/to-1-0.m
 
 ## [0.10.1](https://github.com/UOR-Foundation/prismpm/compare/prism-code-v0.10.0...prism-code-v0.10.1) (2026-11-20)
 
+
+### Breaking Changes
+
+None.
 
 ### Bugs Fixed
 
