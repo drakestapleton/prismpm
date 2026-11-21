@@ -107,9 +107,42 @@ function validateSm121Payload(payload, hdrBlockX) {
   return null;
 }
 
+const VALID_SPIRV_CAPS = new Set([4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 21, 22, 33, 34, 35, 36, 37, 38, 39]);
+const VALID_SPIRV_STORAGE_CLASSES = new Set([0, 1, 4, 5, 6, 7, 8]);
+const SPIRV_BINOPS = new Set([128, 129, 130, 131, 132, 133, 134, 136, 137, 176, 186]);
+
 /**
- * Validate OpenCL SPIR-V 1.0 binary framing and OpenCL Kernel module structure
- * matching `protocol/uor-gpu/payload_vm.om` (`uvm_check_spirv`).
+ * Parse a canonical SPIR-V 1.0 NUL-terminated, zero-padded UTF-8 literal string
+ * starting at word `startWord` inside `[startWord, endWord)`. Returns the next
+ * word index after the string, or `{ error }`.
+ */
+function parseSpirvLiteralString(payload, startWord, endWord, utf8, label) {
+  const nameStart = startWord * 4;
+  const instEnd = endWord * 4;
+  let nulPos = -1;
+  for (let bi = nameStart; bi < instEnd; bi++) {
+    if (payload[bi] === 0) {
+      nulPos = bi;
+      break;
+    }
+  }
+  if (nulPos <= nameStart) return { error: `${label} must be non-empty and NUL-terminated.` };
+  const nameWordEnd = Math.floor((nulPos - nameStart) / 4) * 4 + nameStart + 4;
+  for (let bi = nulPos + 1; bi < nameWordEnd; bi++) {
+    if (payload[bi] !== 0) return { error: `${label} has non-zero padding after NUL.` };
+  }
+  try {
+    utf8.decode(payload.subarray(nameStart, nulPos));
+  } catch {
+    return { error: `${label} is not valid UTF-8.` };
+  }
+  return { nextWord: nameWordEnd / 4 };
+}
+
+/**
+ * Validate OpenCL SPIR-V 1.0 binary framing and closed OpenCL Kernel instruction
+ * set matching `gpu/spirv/emit.om` and `protocol/uor-gpu/payload_vm.om`.
+ * Fails closed on any unknown or malformed opcode.
  */
 function validateSpirvPayload(payload) {
   if (payload.length < 20 || payload.length > 65536 || (payload.length % 4) !== 0) {
@@ -125,11 +158,34 @@ function validateSpirvPayload(payload) {
   const nw = payload.length / 4;
   let capMask = 0; // bit 0: Addresses (4), bit 1: Kernel (6)
   let memModelCount = 0;
-  let stage = 0; // 0=capabilities, 1=memory-model, 2=entry-points, 3=functions
+  let stage = 0; // 0=capabilities/ext, 1=memory-model, 2=entry/decls, 3=functions
   const entryIds = new Set();
   const definedFns = new Set();
+  const definedIds = new Set();
   let inFn = false;
   const utf8 = new TextDecoder('utf-8', { fatal: true });
+
+  const checkId = (id, what) => (id === 0 || id >= bound ? `SPIR-V ${what} id ${id} is outside 1..${bound - 1}.` : null);
+  const defineId = (id, what) => {
+    const err = checkId(id, what);
+    if (err) return err;
+    if (definedIds.has(id)) return `SPIR-V duplicate result id ${id} in ${what}.`;
+    definedIds.add(id);
+    return null;
+  };
+  const checkMemAccess = (maskWord, wc, baseWc, label) => {
+    if (wc === baseWc) return null;
+    const mask = w(maskWord);
+    if ((mask & ~7) !== 0) return `SPIR-V ${label} has invalid MemoryAccess mask 0x${mask.toString(16)}.`;
+    const aligned = (mask & 2) !== 0;
+    const expectedWc = aligned ? baseWc + 2 : baseWc + 1;
+    if (wc !== expectedWc) return `SPIR-V ${label} MemoryAccess expects word count ${expectedWc}, got ${wc}.`;
+    if (aligned) {
+      const align = w(maskWord + 1);
+      if (align === 0 || (align & (align - 1)) !== 0) return `SPIR-V ${label} alignment ${align} must be a non-zero power of two.`;
+    }
+    return null;
+  };
 
   for (let p = 5; p < nw; ) {
     const hd = w(p);
@@ -139,52 +195,125 @@ function validateSpirvPayload(payload) {
       return `SPIR-V instruction at word ${p} has invalid word count ${wc}.`;
     }
     if (op === 17) {
-      // OpCapability (SPIR-V logical layout section 1)
+      // OpCapability (section 1)
       if (inFn || stage > 0 || wc !== 2) return 'SPIR-V OpCapability must appear in module header before OpMemoryModel with word count 2.';
       const cap = w(p + 1);
+      if (!VALID_SPIRV_CAPS.has(cap)) return `SPIR-V unsupported OpenCL capability ${cap}.`;
       if (cap === 4) capMask |= 1;
       if (cap === 6) capMask |= 2;
+    } else if (op === 11) {
+      // OpExtInstImport <ResultId> <LiteralString> (section 3)
+      if (inFn || stage > 0 || wc < 3) return 'SPIR-V OpExtInstImport must appear before OpMemoryModel with word count >= 3.';
+      const idErr = defineId(w(p + 1), 'OpExtInstImport');
+      if (idErr) return idErr;
+      const str = parseSpirvLiteralString(payload, p + 2, p + wc, utf8, 'SPIR-V OpExtInstImport name');
+      if (str.error) return str.error;
+      if (str.nextWord !== p + wc) return 'SPIR-V OpExtInstImport has trailing words after literal string.';
     } else if (op === 14) {
-      // OpMemoryModel Physical64(2) OpenCL(2) (SPIR-V logical layout section 4)
+      // OpMemoryModel Physical64(2) OpenCL(2) (section 4)
       if (inFn || stage > 0 || wc !== 3) return 'SPIR-V OpMemoryModel must appear once before OpEntryPoint with word count 3.';
       if (memModelCount > 0) return 'SPIR-V module must declare exactly one OpMemoryModel.';
       if (w(p + 1) !== 2 || w(p + 2) !== 2) return 'SPIR-V OpMemoryModel must be Physical64 (2) OpenCL (2).';
       memModelCount += 1;
       stage = 1;
     } else if (op === 15) {
-      // OpEntryPoint Kernel(6) <id> <name...> <interface...> (SPIR-V logical layout section 5)
+      // OpEntryPoint Kernel(6) <id> <name...> <interface...> (section 5)
       if (inFn || stage < 1 || stage > 2 || wc < 4 || w(p + 1) !== 6) {
         return 'SPIR-V OpEntryPoint must follow OpMemoryModel before functions and target OpenCL Kernel execution model (6).';
       }
       const eid = w(p + 2);
-      if (eid === 0 || eid >= bound) return `SPIR-V OpEntryPoint id ${eid} is outside 1..${bound - 1}.`;
+      const eidErr = checkId(eid, 'OpEntryPoint');
+      if (eidErr) return eidErr;
       if (entryIds.has(eid)) return `SPIR-V duplicate OpEntryPoint for function id ${eid}.`;
-      // Parse canonical NUL-terminated, zero-padded UTF-8 literal kernel name.
-      const nameStart = (p + 3) * 4;
-      const instEnd = (p + wc) * 4;
-      let nulPos = -1;
-      for (let bi = nameStart; bi < instEnd; bi++) {
-        if (payload[bi] === 0) {
-          nulPos = bi;
-          break;
-        }
-      }
-      if (nulPos <= nameStart) return 'SPIR-V OpEntryPoint kernel name must be non-empty and NUL-terminated.';
-      const nameWordEnd = Math.floor((nulPos - nameStart) / 4) * 4 + nameStart + 4;
-      for (let bi = nulPos + 1; bi < nameWordEnd; bi++) {
-        if (payload[bi] !== 0) return 'SPIR-V OpEntryPoint literal string has non-zero padding after NUL.';
-      }
-      try {
-        utf8.decode(payload.subarray(nameStart, nulPos));
-      } catch {
-        return 'SPIR-V OpEntryPoint kernel name is not valid UTF-8.';
-      }
-      for (let wi = nameWordEnd / 4; wi < p + wc; wi++) {
-        const ifaceId = w(wi);
-        if (ifaceId === 0 || ifaceId >= bound) return `SPIR-V OpEntryPoint interface id ${ifaceId} is outside 1..${bound - 1}.`;
+      const str = parseSpirvLiteralString(payload, p + 3, p + wc, utf8, 'SPIR-V OpEntryPoint kernel name');
+      if (str.error) return str.error;
+      for (let wi = str.nextWord; wi < p + wc; wi++) {
+        const ifaceErr = checkId(w(wi), 'OpEntryPoint interface');
+        if (ifaceErr) return ifaceErr;
       }
       entryIds.add(eid);
       stage = 2;
+    } else if (op === 16) {
+      // OpExecutionMode <EntryPoint> <Mode> [literals...]
+      if (inFn || stage !== 2 || wc < 3) return 'SPIR-V OpExecutionMode must follow OpEntryPoint before functions with word count >= 3.';
+      const target = w(p + 1);
+      if (!entryIds.has(target)) return `SPIR-V OpExecutionMode targets undeclared entry point ${target}.`;
+    } else if (op === 71) {
+      // OpDecorate <Target> <Decoration> [literals...]
+      if (inFn || stage !== 2 || wc < 3) return 'SPIR-V OpDecorate must appear before functions with word count >= 3.';
+      const targetErr = checkId(w(p + 1), 'OpDecorate target');
+      if (targetErr) return targetErr;
+      if (w(p + 2) === 11 && wc !== 4) return 'SPIR-V OpDecorate BuiltIn must have word count 4.';
+    } else if (op === 19 || op === 20) {
+      // OpTypeVoid / OpTypeBool <ResultId>
+      if (inFn || stage !== 2 || wc !== 2) return `SPIR-V opcode ${op} must appear before functions with word count 2.`;
+      const idErr = defineId(w(p + 1), `opcode ${op}`);
+      if (idErr) return idErr;
+    } else if (op === 21) {
+      // OpTypeInt <ResultId> <Width> <Signedness>
+      if (inFn || stage !== 2 || wc !== 4) return 'SPIR-V OpTypeInt must appear before functions with word count 4.';
+      const idErr = defineId(w(p + 1), 'OpTypeInt');
+      if (idErr) return idErr;
+      const width = w(p + 2);
+      const signed = w(p + 3);
+      if (![8, 16, 32, 64].includes(width) || (signed !== 0 && signed !== 1)) {
+        return `SPIR-V OpTypeInt has invalid width ${width} or signedness ${signed}.`;
+      }
+    } else if (op === 22) {
+      // OpTypeFloat <ResultId> <Width>
+      if (inFn || stage !== 2 || wc !== 3) return 'SPIR-V OpTypeFloat must appear before functions with word count 3.';
+      const idErr = defineId(w(p + 1), 'OpTypeFloat');
+      if (idErr) return idErr;
+      const width = w(p + 2);
+      if (![16, 32, 64].includes(width)) return `SPIR-V OpTypeFloat has invalid width ${width}.`;
+    } else if (op === 23) {
+      // OpTypeVector <ResultId> <ComponentType> <ComponentCount>
+      if (inFn || stage !== 2 || wc !== 4) return 'SPIR-V OpTypeVector must appear before functions with word count 4.';
+      const idErr = defineId(w(p + 1), 'OpTypeVector');
+      if (idErr) return idErr;
+      const compErr = checkId(w(p + 2), 'OpTypeVector component type');
+      if (compErr) return compErr;
+      const count = w(p + 3);
+      if (count < 2 || count > 16) return `SPIR-V OpTypeVector component count ${count} is outside 2..16.`;
+    } else if (op === 32) {
+      // OpTypePointer <ResultId> <StorageClass> <Type>
+      if (inFn || stage !== 2 || wc !== 4) return 'SPIR-V OpTypePointer must appear before functions with word count 4.';
+      const idErr = defineId(w(p + 1), 'OpTypePointer');
+      if (idErr) return idErr;
+      if (!VALID_SPIRV_STORAGE_CLASSES.has(w(p + 2))) return `SPIR-V OpTypePointer unsupported storage class ${w(p + 2)}.`;
+      const tyErr = checkId(w(p + 3), 'OpTypePointer pointee type');
+      if (tyErr) return tyErr;
+    } else if (op === 33) {
+      // OpTypeFunction <ResultId> <ReturnType> [ParamType...]
+      if (inFn || stage !== 2 || wc < 3) return 'SPIR-V OpTypeFunction must appear before functions with word count >= 3.';
+      const idErr = defineId(w(p + 1), 'OpTypeFunction');
+      if (idErr) return idErr;
+      for (let wi = p + 2; wi < p + wc; wi++) {
+        const tyErr = checkId(w(wi), 'OpTypeFunction signature type');
+        if (tyErr) return tyErr;
+      }
+    } else if (op === 43) {
+      // OpConstant <ResultType> <ResultId> <Literal...>
+      if (inFn || stage !== 2 || wc < 4) return 'SPIR-V OpConstant must appear before functions with word count >= 4.';
+      const tyErr = checkId(w(p + 1), 'OpConstant result type');
+      if (tyErr) return tyErr;
+      const idErr = defineId(w(p + 2), 'OpConstant');
+      if (idErr) return idErr;
+    } else if (op === 59) {
+      // OpVariable <ResultType> <ResultId> <StorageClass> [Initializer]
+      if ((inFn ? stage !== 3 : stage !== 2) || (wc !== 4 && wc !== 5)) return 'SPIR-V malformed or misplaced OpVariable.';
+      const tyErr = checkId(w(p + 1), 'OpVariable result type');
+      if (tyErr) return tyErr;
+      const idErr = defineId(w(p + 2), 'OpVariable');
+      if (idErr) return idErr;
+      const sc = w(p + 3);
+      if (!VALID_SPIRV_STORAGE_CLASSES.has(sc)) return `SPIR-V OpVariable unsupported storage class ${sc}.`;
+      if (inFn && sc !== 7) return 'SPIR-V function-scope OpVariable must use Function storage class (7).';
+      if (!inFn && sc === 7) return 'SPIR-V module-scope OpVariable cannot use Function storage class (7).';
+      if (wc === 5) {
+        const initErr = checkId(w(p + 4), 'OpVariable initializer');
+        if (initErr) return initErr;
+      }
     } else if (op === 54) {
       // OpFunction <ResultType> <ResultId> <FunctionControl> <FunctionType>
       if (inFn || stage < 2 || wc !== 5) return 'SPIR-V malformed, misplaced, or nested OpFunction.';
@@ -192,18 +321,139 @@ function validateSpirvPayload(payload) {
       const fnId = w(p + 2);
       const fnCtrl = w(p + 3);
       const fnType = w(p + 4);
-      if (resType === 0 || resType >= bound) return `SPIR-V OpFunction result type ${resType} is outside 1..${bound - 1}.`;
-      if (fnId === 0 || fnId >= bound) return `SPIR-V OpFunction id ${fnId} is outside 1..${bound - 1}.`;
+      const rtErr = checkId(resType, 'OpFunction result type');
+      if (rtErr) return rtErr;
+      const fnIdErr = defineId(fnId, 'OpFunction');
+      if (fnIdErr) return fnIdErr;
       if ((fnCtrl & ~0xf) !== 0 || (fnCtrl & 3) === 3) return `SPIR-V OpFunction has invalid FunctionControl mask 0x${fnCtrl.toString(16)}.`;
-      if (fnType === 0 || fnType >= bound) return `SPIR-V OpFunction type ${fnType} is outside 1..${bound - 1}.`;
-      if (definedFns.has(fnId)) return `SPIR-V duplicate OpFunction id ${fnId}.`;
+      const ftErr = checkId(fnType, 'OpFunction type');
+      if (ftErr) return ftErr;
       definedFns.add(fnId);
       inFn = true;
       stage = 3;
+    } else if (op === 55) {
+      // OpFunctionParameter <ResultType> <ResultId>
+      if (!inFn || wc !== 3) return 'SPIR-V OpFunctionParameter must appear inside a function with word count 3.';
+      const tyErr = checkId(w(p + 1), 'OpFunctionParameter result type');
+      if (tyErr) return tyErr;
+      const idErr = defineId(w(p + 2), 'OpFunctionParameter');
+      if (idErr) return idErr;
     } else if (op === 56) {
       // OpFunctionEnd
       if (!inFn || wc !== 1) return 'SPIR-V malformed OpFunctionEnd.';
       inFn = false;
+    } else if (op === 248) {
+      // OpLabel <ResultId>
+      if (!inFn || wc !== 2) return 'SPIR-V OpLabel must appear inside a function with word count 2.';
+      const idErr = defineId(w(p + 1), 'OpLabel');
+      if (idErr) return idErr;
+    } else if (op === 247) {
+      // OpSelectionMerge <MergeBlock> <SelectionControl>
+      if (!inFn || wc !== 3) return 'SPIR-V OpSelectionMerge must appear inside a function with word count 3.';
+      const blkErr = checkId(w(p + 1), 'OpSelectionMerge target');
+      if (blkErr) return blkErr;
+      if ((w(p + 2) & ~3) !== 0) return `SPIR-V OpSelectionMerge has invalid control mask 0x${w(p + 2).toString(16)}.`;
+    } else if (op === 249) {
+      // OpBranch <TargetLabel>
+      if (!inFn || wc !== 2) return 'SPIR-V OpBranch must appear inside a function with word count 2.';
+      const blkErr = checkId(w(p + 1), 'OpBranch target');
+      if (blkErr) return blkErr;
+    } else if (op === 250) {
+      // OpBranchConditional <Condition> <TrueLabel> <FalseLabel> [Weight1 Weight2]
+      if (!inFn || (wc !== 4 && wc !== 6)) return 'SPIR-V OpBranchConditional must appear inside a function with word count 4 or 6.';
+      for (let wi = p + 1; wi <= p + 3; wi++) {
+        const refErr = checkId(w(wi), 'OpBranchConditional operand');
+        if (refErr) return refErr;
+      }
+    } else if (op === 253) {
+      // OpReturn
+      if (!inFn || wc !== 1) return 'SPIR-V OpReturn must appear inside a function with word count 1.';
+    } else if (op === 61) {
+      // OpLoad <ResultType> <ResultId> <Pointer> [MemoryAccess...]
+      if (!inFn || wc < 4) return 'SPIR-V OpLoad must appear inside a function with word count >= 4.';
+      const tyErr = checkId(w(p + 1), 'OpLoad result type');
+      if (tyErr) return tyErr;
+      const idErr = defineId(w(p + 2), 'OpLoad');
+      if (idErr) return idErr;
+      const ptrErr = checkId(w(p + 3), 'OpLoad pointer');
+      if (ptrErr) return ptrErr;
+      const maErr = checkMemAccess(p + 4, wc, 4, 'OpLoad');
+      if (maErr) return maErr;
+    } else if (op === 62) {
+      // OpStore <Pointer> <Object> [MemoryAccess...]
+      if (!inFn || wc < 3) return 'SPIR-V OpStore must appear inside a function with word count >= 3.';
+      const ptrErr = checkId(w(p + 1), 'OpStore pointer');
+      if (ptrErr) return ptrErr;
+      const objErr = checkId(w(p + 2), 'OpStore object');
+      if (objErr) return objErr;
+      const maErr = checkMemAccess(p + 3, wc, 3, 'OpStore');
+      if (maErr) return maErr;
+    } else if (op === 70) {
+      // OpInBoundsPtrAccessChain <ResultType> <ResultId> <Base> <Element> [Indexes...]
+      if (!inFn || wc < 5) return 'SPIR-V OpInBoundsPtrAccessChain must appear inside a function with word count >= 5.';
+      const tyErr = checkId(w(p + 1), 'OpInBoundsPtrAccessChain result type');
+      if (tyErr) return tyErr;
+      const idErr = defineId(w(p + 2), 'OpInBoundsPtrAccessChain');
+      if (idErr) return idErr;
+      for (let wi = p + 3; wi < p + wc; wi++) {
+        const refErr = checkId(w(wi), 'OpInBoundsPtrAccessChain operand');
+        if (refErr) return refErr;
+      }
+    } else if (op === 81) {
+      // OpCompositeExtract <ResultType> <ResultId> <Composite> <Literal...>
+      if (!inFn || wc < 5) return 'SPIR-V OpCompositeExtract must appear inside a function with word count >= 5.';
+      const tyErr = checkId(w(p + 1), 'OpCompositeExtract result type');
+      if (tyErr) return tyErr;
+      const idErr = defineId(w(p + 2), 'OpCompositeExtract');
+      if (idErr) return idErr;
+      const cmpErr = checkId(w(p + 3), 'OpCompositeExtract composite');
+      if (cmpErr) return cmpErr;
+    } else if (op === 113) {
+      // OpUConvert <ResultType> <ResultId> <UnsignedValue>
+      if (!inFn || wc !== 4) return 'SPIR-V OpUConvert must appear inside a function with word count 4.';
+      const tyErr = checkId(w(p + 1), 'OpUConvert result type');
+      if (tyErr) return tyErr;
+      const idErr = defineId(w(p + 2), 'OpUConvert');
+      if (idErr) return idErr;
+      const valErr = checkId(w(p + 3), 'OpUConvert operand');
+      if (valErr) return valErr;
+    } else if (op === 12) {
+      // OpExtInst <ResultType> <ResultId> <Set> <Instruction> [Operands...]
+      if (!inFn || wc < 5) return 'SPIR-V OpExtInst must appear inside a function with word count >= 5.';
+      const tyErr = checkId(w(p + 1), 'OpExtInst result type');
+      if (tyErr) return tyErr;
+      const idErr = defineId(w(p + 2), 'OpExtInst');
+      if (idErr) return idErr;
+      const setErr = checkId(w(p + 3), 'OpExtInst set');
+      if (setErr) return setErr;
+      for (let wi = p + 5; wi < p + wc; wi++) {
+        const opErr = checkId(w(wi), 'OpExtInst operand');
+        if (opErr) return opErr;
+      }
+    } else if (op === 169) {
+      // OpSelect <ResultType> <ResultId> <Condition> <Object1> <Object2>
+      if (!inFn || wc !== 6) return 'SPIR-V OpSelect must appear inside a function with word count 6.';
+      const tyErr = checkId(w(p + 1), 'OpSelect result type');
+      if (tyErr) return tyErr;
+      const idErr = defineId(w(p + 2), 'OpSelect');
+      if (idErr) return idErr;
+      for (let wi = p + 3; wi <= p + 5; wi++) {
+        const refErr = checkId(w(wi), 'OpSelect operand');
+        if (refErr) return refErr;
+      }
+    } else if (SPIRV_BINOPS.has(op)) {
+      // Binary arithmetic / comparison <ResultType> <ResultId> <Op1> <Op2>
+      if (!inFn || wc !== 5) return `SPIR-V opcode ${op} must appear inside a function with word count 5.`;
+      const tyErr = checkId(w(p + 1), `opcode ${op} result type`);
+      if (tyErr) return tyErr;
+      const idErr = defineId(w(p + 2), `opcode ${op}`);
+      if (idErr) return idErr;
+      const aErr = checkId(w(p + 3), `opcode ${op} operand 1`);
+      if (aErr) return aErr;
+      const bErr = checkId(w(p + 4), `opcode ${op} operand 2`);
+      if (bErr) return bErr;
+    } else {
+      return `SPIR-V unsupported or invalid opcode ${op} at word ${p}.`;
     }
     p += wc;
   }

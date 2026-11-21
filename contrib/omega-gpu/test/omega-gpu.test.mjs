@@ -381,6 +381,10 @@ test('SPIR-V 1.0 OpenCL Kernel framing and exact version 1.0 are enforced', asyn
     ['empty OpEntryPoint name', spvWords([0x07230203, 0x00010000, 0, 8, 0, (2 << 16) | 17, 4, (2 << 16) | 17, 6, (3 << 16) | 14, 2, 2, (4 << 16) | 15, 6, 3, 0, (5 << 16) | 54, 1, 3, 0, 2, (1 << 16) | 56])],
     ['unterminated OpEntryPoint name', spvWords([0x07230203, 0x00010000, 0, 8, 0, (2 << 16) | 17, 4, (2 << 16) | 17, 6, (3 << 16) | 14, 2, 2, (4 << 16) | 15, 6, 3, 0x41414141, (5 << 16) | 54, 1, 3, 0, 2, (1 << 16) | 56])],
     ['OpEntryPoint interface id >= bound', spvWords([0x07230203, 0x00010000, 0, 8, 0, (2 << 16) | 17, 4, (2 << 16) | 17, 6, (3 << 16) | 14, 2, 2, (6 << 16) | 15, 6, 3, 0x64646176, 0, 99, (5 << 16) | 54, 1, 3, 0, 2, (1 << 16) | 56])],
+    ['truncated OpTypeVoid (wc=1, missing ResultId)', spvWords([0x07230203, 0x00010000, 0, 8, 0, (2 << 16) | 17, 4, (2 << 16) | 17, 6, (3 << 16) | 14, 2, 2, (5 << 16) | 15, 6, 3, 0x64646176, 0, (1 << 16) | 19, (5 << 16) | 54, 1, 3, 0, 2, (1 << 16) | 56])],
+    ['reserved/unsupported SPIR-V opcode 0xffff', spvWords([0x07230203, 0x00010000, 0, 8, 0, (2 << 16) | 17, 4, (2 << 16) | 17, 6, (3 << 16) | 14, 2, 2, (5 << 16) | 15, 6, 3, 0x64646176, 0, (1 << 16) | 0xffff, (5 << 16) | 54, 1, 3, 0, 2, (1 << 16) | 56])],
+    ['duplicate SPIR-V ResultId across OpTypeVoid and OpTypeBool', spvWords([0x07230203, 0x00010000, 0, 8, 0, (2 << 16) | 17, 4, (2 << 16) | 17, 6, (3 << 16) | 14, 2, 2, (5 << 16) | 15, 6, 3, 0x64646176, 0, (2 << 16) | 19, 1, (2 << 16) | 20, 1, (5 << 16) | 54, 1, 3, 0, 2, (1 << 16) | 56])],
+    ['OpReturn outside function body', spvWords([0x07230203, 0x00010000, 0, 8, 0, (2 << 16) | 17, 4, (2 << 16) | 17, 6, (3 << 16) | 14, 2, 2, (5 << 16) | 15, 6, 3, 0x64646176, 0, (1 << 16) | 253, (5 << 16) | 54, 1, 3, 0, 2, (1 << 16) | 56])],
     ['missing Kernel capability', buildSpirvPayload({ includeKernelCap: false })],
     ['truncated instruction', buildSpirvPayload({ truncateInst: true })],
   ];
