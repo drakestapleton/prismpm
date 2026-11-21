@@ -282,10 +282,11 @@ async function buildModelApp(dir, session, { log, env, snapshot, gaps, kernel, w
     built = await buildHolo(taken.snapshot, { evaluator: readFileSync(new URL(EVALUATOR_GUEST.file, import.meta.url)), snapshotBytes: taken.bytes });
   } catch (error) {
     if (error.code === 'guest.uncovered' || error.code === 'eval.uncovered' || error.code === 'holo.profile' || error.code === 'holo.capabilities' || error.code === 'holo.facets') {
-      return { ok: false, stage: 'build', where: 'kernel', code: 'build.frontend-unavailable', reason: error.code, message: `Lean's kernel proved every theorem, and the holo is not built: ${error.message}. Nothing is compiled on this path, and it does not run this yet. This is a limit of the builder, not a verdict on the app. ${NO_DOCKER_FREE_BUILD}` };
+      return { ...failure(new PrismCodeError('build.guest-uncovered', `Lean's kernel proved every theorem, and the holo is not built: ${error.message}. Nothing is compiled on this path, and it does not run this yet. This is a limit of the builder, not a verdict on the app. ${NO_DOCKER_FREE_BUILD}`)), stage: 'build', where: 'kernel', reason: error.code };
     }
-    if (error.code === 'holo.vectors' || error.code === 'holo.no-vectors') return { ok: false, stage: 'build', where: 'kernel', reason: error.code, message: `The holo is not built: ${error.message}. Change the examples or the rules in the model, then build again.` };
-    return { ok: false, stage: 'build', where: 'kernel', reason: error.code ?? null, message: `The holo is not built: ${error.message}. This says nothing about the app.` };
+    if (error.code === 'holo.vectors' || error.code === 'holo.no-vectors') return { ...failure(new PrismCodeError('build.vectors', `The holo is not built: ${error.message}. Change the examples or the rules in the model, then build again.`)), stage: 'build', where: 'kernel', reason: error.code };
+    if (error.code === 'holo.guest-differs') return { ...failure(new PrismCodeError('build.guest-differs', `The holo is not built: ${error.message}. This is a fault of the builder, and says nothing about the app.`)), stage: 'build', where: 'kernel', reason: error.code };
+    return { ok: false, stage: 'build', where: 'kernel', code: error.code ?? null, message: `The holo is not built: ${error.message}. This says nothing about the app.` };
   }
   const path = join(dir, '.prism', 'build', `${built.name.toLowerCase().match(/[a-z0-9]+/g)?.join('-') ?? 'app'}.holo`);
   mkdirSync(dirname(path), { recursive: true });

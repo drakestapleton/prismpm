@@ -908,6 +908,20 @@ pub fn run_at(root: &Path, id: &str) {
             &[("sdk/npm/prism-code/test/agent-tools.test.mjs", 8)],
             "600000",
         ),
+        // A text application's holo built with nothing compiled: the evaluator guest and the model's program.
+        "DK-50" => node_suite::verify_exact(
+            root,
+            id,
+            &[
+                ("sdk/npm/prism-code/test/model-eval.test.mjs", 9),
+                ("sdk/npm/prism-code/test/model-guest.test.mjs", 10),
+                ("sdk/npm/prism-code/test/model-guest-primitives.test.mjs", 13),
+                ("sdk/npm/prism-code/test/model-holo.test.mjs", 10),
+                ("sdk/npm/prism-code/test/model-bundle.test.mjs", 4),
+                ("sdk/npm/prism-code/test/model-site.test.mjs", 2),
+            ],
+            "600000",
+        ),
         // The `prism-code system` and `auth` command groups of #446 and #447.
         "DK-44" => node_suite::verify_exact(
             root,
